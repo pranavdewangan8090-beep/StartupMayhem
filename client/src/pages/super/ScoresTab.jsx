@@ -1,0 +1,67 @@
+import { useEffect, useState } from 'react';
+import { api } from '../../lib/api.js';
+
+export default function ScoresTab() {
+  const [leaderboard, setLeaderboard] = useState([]);
+  const [points, setPoints] = useState([]);
+  const [view, setView] = useState('leaderboard');
+
+  useEffect(() => {
+    api.get('/super-admin/leaderboard').then(setLeaderboard);
+    api.get('/super-admin/decision-points').then(setPoints);
+  }, []);
+
+  const byTeam = {};
+  for (const p of points) {
+    byTeam[p.team_code] = byTeam[p.team_code] || {};
+    if (p.round) byTeam[p.team_code][p.round] = Number(p.total);
+  }
+
+  return (
+    <div>
+      <div className="tabbar" style={{ position: 'static' }}>
+        <button className={view === 'leaderboard' ? 'active' : ''} onClick={() => setView('leaderboard')}>Leaderboard</button>
+        <button className={view === 'points' ? 'active' : ''} onClick={() => setView('points')}>Decision Points</button>
+      </div>
+
+      {view === 'leaderboard' && (
+        <div className="card-surface section" style={{ marginTop: 16 }}>
+          <h2>Hidden Leaderboard (Super Admin only)</h2>
+          <p>Resource Score 30% + Decision Score 70% + Secret Mission bonus.</p>
+          <div className="table-scroll">
+            <table className="data-table">
+              <thead><tr><th>#</th><th>Team</th><th>Resource</th><th>Decision</th><th>Mission</th><th>Total</th></tr></thead>
+              <tbody>
+                {leaderboard.map((r, i) => (
+                  <tr key={r.teamId}>
+                    <td>{i + 1}</td><td>{r.teamCode}</td><td>{r.resourceScore}</td>
+                    <td>{r.decisionScore}</td><td>+{r.missionBonus}</td><td><b>{r.totalScore}</b></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {view === 'points' && (
+        <div className="card-surface section" style={{ marginTop: 16 }}>
+          <h2>Decision Points by Round</h2>
+          <div className="table-scroll">
+            <table className="data-table">
+              <thead><tr><th>Team</th>{[1,2,3,4,5,6].map((r) => <th key={r}>R{r}</th>)}</tr></thead>
+              <tbody>
+                {Object.entries(byTeam).map(([code, rounds]) => (
+                  <tr key={code}>
+                    <td>{code}</td>
+                    {[1,2,3,4,5,6].map((r) => <td key={r}>{rounds[r] ?? 0}</td>)}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
