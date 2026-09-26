@@ -109,64 +109,70 @@ export default function ActionCardsTab({ gameState, onChanged }) {
       {incomingDeals.length > 0 && (
         <div className="card-surface section" style={{ borderColor: 'var(--cat-deal)' }}>
           <h2>Deal Offers For You</h2>
-          {incomingDeals.map((d) => (
-            <div key={d.id} className="action-card-tile cat-deal" style={{ marginBottom: 10 }}>
-              <div className="name">{d.name} — from {d.from_team_code}</div>
-              <div className="effect">{d.effect_text}</div>
-              <div className="row">
-                <button className="btn btn-success btn-sm" disabled={busy} onClick={() => respondDeal(d.id, true)}>Accept</button>
-                <button className="btn btn-danger btn-sm" disabled={busy} onClick={() => respondDeal(d.id, false)}>Reject</button>
+          <div className="action-grid">
+            {incomingDeals.map((d) => (
+              <div key={d.id} className="action-card-tile cat-deal">
+                <div className="name">{d.name} — from {d.from_team_code}</div>
+                <div className="effect">{d.effect_text}</div>
+                <div className="row">
+                  <button className="btn btn-success btn-sm" disabled={busy} onClick={() => respondDeal(d.id, true)}>Accept</button>
+                  <button className="btn btn-danger btn-sm" disabled={busy} onClick={() => respondDeal(d.id, false)}>Reject</button>
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       )}
 
       <div className="card-surface section">
         <h2>Your Hand ({hand.filter((c) => c.status !== 'used').length})</h2>
         {hand.length === 0 && <p>You haven't requested any action cards yet.</p>}
-        {hand.map((c) => (
-          <div key={c.id} className={`action-card-tile cat-${c.category} ${c.status === 'listed' ? 'listed' : ''}`} style={{ marginBottom: 10 }}>
-            <span className={`pill cat-${c.category}`}>{CAT_LABEL[c.category]}</span>
-            <div className="name" style={{ marginTop: 6 }}>{c.name}</div>
-            <div className="effect">{c.effect_text}</div>
-            {c.status === 'listed' && <p style={{ color: 'var(--warning)' }}>On the marketplace — not usable.</p>}
-            {c.status === 'pending' && <p style={{ color: 'var(--text-dim)' }}>Awaiting response…</p>}
-            {c.status === 'used' && <p style={{ color: 'var(--text-dim)' }}>Already used.</p>}
-            {c.status === 'held' && gameState?.card_play_open && (
-              <div className="row">
-                {c.category === 'self_help' || c.category === 'special' ? (
-                  <button className="btn btn-primary btn-sm" disabled={busy} onClick={() => playSelf(c.id)}>Play</button>
-                ) : c.category === 'attack' ? (
-                  <button className="btn btn-danger btn-sm" disabled={busy} onClick={() => setPlayTarget({ card: c, mode: 'attack' })}>Attack…</button>
-                ) : (
-                  <button className="btn btn-ghost btn-sm" disabled={busy} onClick={() => setPlayTarget({ card: c, mode: 'deal' })}>Propose Deal…</button>
-                )}
-              </div>
-            )}
-            {c.status === 'held' && !gameState?.card_play_open && <p style={{ color: 'var(--warning)' }}>Playing cards is closed right now.</p>}
-          </div>
-        ))}
+        <div className="action-grid">
+          {hand.map((c) => (
+            <div key={c.id} className={`action-card-tile cat-${c.category} ${c.status === 'listed' ? 'listed' : ''}`}>
+              <span className={`pill cat-${c.category}`}>{CAT_LABEL[c.category]}</span>
+              <div className="name" style={{ marginTop: 6 }}>{c.name}</div>
+              <div className="effect">{c.effect_text}</div>
+              {c.status === 'listed' && <p className="warning-text">On the marketplace — not usable.</p>}
+              {c.status === 'pending' && <p>Awaiting response…</p>}
+              {c.status === 'used' && <p>Already used.</p>}
+              {c.status === 'held' && gameState?.card_play_open && (
+                <div className="row">
+                  {c.category === 'self_help' || c.category === 'special' ? (
+                    <button className="btn btn-primary btn-sm" disabled={busy} onClick={() => playSelf(c.id)}>Play</button>
+                  ) : c.category === 'attack' ? (
+                    <button className="btn btn-danger btn-sm" disabled={busy} onClick={() => setPlayTarget({ card: c, mode: 'attack' })}>Attack…</button>
+                  ) : (
+                    <button className="btn btn-ghost btn-sm" disabled={busy} onClick={() => setPlayTarget({ card: c, mode: 'deal' })}>Propose Deal…</button>
+                  )}
+                </div>
+              )}
+              {c.status === 'held' && !gameState?.card_play_open && <p className="warning-text">Playing cards is closed right now.</p>}
+            </div>
+          ))}
+        </div>
       </div>
 
       {gameState?.r2_selection_open ? (
         <div className="card-surface section">
           <h2>Action Card Catalog</h2>
           <p>Pick up to 4 cards, one request at a time.</p>
-          {catalog.map((c) => (
-            <div key={c.id} className={`action-card-tile cat-${c.category}`} style={{ marginBottom: 10, opacity: heldIds.has(c.id) ? 0.5 : 1 }}>
-              <span className={`pill cat-${c.category}`}>{CAT_LABEL[c.category]}</span>
-              <div className="name" style={{ marginTop: 6 }}>{c.name}</div>
-              <div className="effect">{c.effect_text}</div>
-              <button
-                className="btn btn-primary btn-sm"
-                disabled={busy || !canRequestMore || heldIds.has(c.id)}
-                onClick={() => request(c.id)}
-              >
-                {heldIds.has(c.id) ? 'Already requested' : 'Make Request'}
-              </button>
-            </div>
-          ))}
+          <div className="action-grid">
+            {catalog.map((c) => (
+              <div key={c.id} className={`action-card-tile cat-${c.category}`} style={{ opacity: heldIds.has(c.id) ? 0.5 : 1 }}>
+                <span className={`pill cat-${c.category}`}>{CAT_LABEL[c.category]}</span>
+                <div className="name" style={{ marginTop: 6 }}>{c.name}</div>
+                <div className="effect">{c.effect_text}</div>
+                <button
+                  className="btn btn-primary btn-sm"
+                  disabled={busy || !canRequestMore || heldIds.has(c.id)}
+                  onClick={() => request(c.id)}
+                >
+                  {heldIds.has(c.id) ? 'Already requested' : 'Make Request'}
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
       ) : (
         <div className="card-surface section">

@@ -1,66 +1,40 @@
 import { Router } from 'express';
+import { z } from 'zod';
 import { pool } from '../db/pool.js';
 import { requireAuth } from '../middleware/auth.js';
 import { requireRole } from '../middleware/roles.js';
+import { validate } from '../middleware/validate.js';
 import { actionLimiter } from '../middleware/rateLimit.js';
 import { h } from '../lib/errors.js';
 
 const router = Router();
-router.use(requireAuth);
+// Round 3: Market Mayhem is entirely an Admin/Super Admin tool — players
+// never see it or respond themselves (Admins record each team's response
+// from the paper GM Guide).
+router.use(requireAuth, requireRole('admin', 'super_admin'));
 
-// Everyone (players, admins, super admins) can see the currently active
-// mayhem — it must show on both the Super Admin side and every team's phone.
+// The currently-triggered event (or null before Round 3 starts / between events).
 router.get(
   '/current',
   h(async (req, res) => {
     const { rows } = await pool.query(
-      `select m.id as mayhem_id, m.triggered_at, m.title, m.description, m.effect_text, m.tags
+      `select e.id as mayhem_event_id, e.number, e.triggered_at, e.title, e.story_text, e.effect_text, e.tags
        from game_state gs
-       join mayhems m on m.id = gs.current_mayhem_id
+       join mayhem_events e on e.id = gs.current_mayhem_event_id
        where gs.id = 1`
     );
     res.json(rows[0] || null);
   })
 );
 
-// Admins/Super Admins only: which teams hold a card or identity-card ability
-// that protects them from the CURRENT mayhem, so they can decide manually
-// whether to apply the effect.
+// All 3 events with trigger status, so the Super Admin can see round progress.
 router.get(
-  '/protections',
-  requireRole('admin', 'super_admin'),
+  '/events',
   h(async (req, res) => {
-    const { rows: mrows } = await pool.query(
-      `select m.id as mayhem_id, m.tags, m.protected_action_card_ids from game_state gs
-       join mayhems m on m.id = gs.current_mayhem_id
-       where gs.id = 1`
+    const { rows } = await pool.query(
+      'select id, number, title, is_triggered, triggered_at from mayhem_events order by number'
     );
-    const mayhem = mrows[0];
-    if (!mayhem) return res.json({ specialCardHolders: [], taggedIdentityCardHolders: [] });
-
-    const { rows: specialCardHolders } = await pool.query(
-      `select t.id as team_id, t.team_code, ac.name as card_name
-       from action_cards ac
-       join team_action_cards tac on tac.action_card_id = ac.id and tac.status = 'held'
-       join teams t on t.id = tac.team_id
-       where ac.id = any($1::int[])`,
-      [mayhem.protected_action_card_ids]
-    );
-
-    // Teams whose identity cards react to one of this mayhem's tags (informational —
-    // exact effect still applied manually per Section 8 of the game rules)
-    const { rows: taggedIdentityCardHolders } = await pool.query(
-      `select t.id as team_id, t.team_code, ic.title as card_title, ic.category, ic.description
-       from teams t
-       join lateral (
-         select * from identity_cards where id in
-           (t.market_card_id, t.customer_card_id, t.problem_card_id, t.mission_card_id, t.resources_card_id)
-       ) ic on true
-       where ic.event_tags && $1 or ic.event_tags @> array['any']::text[]`,
-      [mayhem.tags]
-    );
-
-    res.json({ specialCardHolders, taggedIdentityCardHolders });
+    res.json(rows);
   })
 );
 
@@ -69,7 +43,56 @@ router.post(
   actionLimiter,
   requireRole('super_admin'),
   h(async (req, res) => {
-    const { rows } = await pool.query('select * from fn_trigger_mayhem($1)', [req.user.id]);
+    const { rows } = await pool.query('select * from fn_trigger_mayhem_event($1)', [req.user.id]);
+    res.json(rows[0]);
+  })
+);
+
+// For the currently-triggered event: every team, its Market card's tier, and
+// whether (and how) a response has already been recorded for it.
+router.get(
+  '/team-status',
+  h(async (req, res) => {
+    const { rows: gsRows } = await pool.query('select current_mayhem_event_id from game_state where id = 1');
+    const eventId = gsRows[0]?.current_mayhem_event_id;
+    if (!eventId) return res.json([]);
+
+    const { rows } = await pool.query(
+      `select t.id as team_id, t.team_code, mk.title as market_title, mt.tier,
+              r.response, r.partner_team_id, r.applied, pt.team_code as partner_team_code
+       from teams t
+       join identity_cards mk on mk.id = t.market_card_id
+       left join market_tiers mt on mt.mayhem_event_id = $1 and mt.market_card_id = t.market_card_id
+       left join team_mayhem_responses r on r.mayhem_event_id = $1 and r.team_id = t.id
+       left join teams pt on pt.id = r.partner_team_id
+       where t.is_active
+       order by t.team_code`,
+      [eventId]
+    );
+    res.json(rows);
+  })
+);
+
+const respondSchema = z.object({
+  teamId: z.number().int().positive(),
+  response: z.enum(['accept', 'spend', 'adapt', 'partner']),
+  partnerTeamId: z.number().int().positive().nullable().optional(),
+  requestId: z.string().uuid(),
+});
+router.post(
+  '/respond',
+  actionLimiter,
+  validate(respondSchema),
+  h(async (req, res) => {
+    const { rows: gsRows } = await pool.query('select current_mayhem_event_id from game_state where id = 1');
+    const eventId = gsRows[0]?.current_mayhem_event_id;
+    if (!eventId) return res.status(409).json({ error: 'EVENT_NOT_FOUND', message: 'No Market Mayhem event is currently active.' });
+
+    const b = req.body;
+    const { rows } = await pool.query(
+      'select * from fn_record_mayhem_response($1,$2,$3,$4,$5,$6)',
+      [req.user.id, b.teamId, eventId, b.response, b.partnerTeamId ?? null, b.requestId]
+    );
     res.json(rows[0]);
   })
 );

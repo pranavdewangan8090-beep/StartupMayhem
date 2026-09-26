@@ -540,28 +540,140 @@ end;
 $$;
 
 -- ---------------------------------------------------------------------------
--- Super Admin: trigger a random mayhem (does not repeat one already triggered
--- while any un-triggered mayhem remains)
+-- Super Admin: trigger the next Market Mayhem event in sequence (1, 2, 3).
+-- Raises NO_MORE_EVENTS once all three have run.
 -- ---------------------------------------------------------------------------
-create or replace function fn_trigger_mayhem(p_actor_user_id uuid) returns mayhems
+create or replace function fn_trigger_mayhem_event(p_actor_user_id uuid) returns mayhem_events
 language plpgsql as $$
 declare
-  v_row mayhems%rowtype;
+  v_row mayhem_events%rowtype;
 begin
-  select * into v_row from mayhems
-  where is_active and not is_triggered
-  order by random() limit 1;
+  select * into v_row from mayhem_events
+  where not is_triggered
+  order by number limit 1;
+  if v_row.id is null then raise exception 'NO_MORE_EVENTS'; end if;
 
-  if v_row.id is null then
-    select * into v_row from mayhems where is_active order by random() limit 1;
-  end if;
-  if v_row.id is null then raise exception 'NO_MAYHEMS_CONFIGURED'; end if;
-
-  update mayhems set is_triggered = true, triggered_at = now(), triggered_by = p_actor_user_id
+  update mayhem_events set is_triggered = true, triggered_at = now(), triggered_by = p_actor_user_id
   where id = v_row.id
   returning * into v_row;
 
-  update game_state set current_mayhem_id = v_row.id, updated_at = now() where id = 1;
+  update game_state set current_mayhem_event_id = v_row.id, updated_at = now() where id = 1;
+
+  return v_row;
+end;
+$$;
+
+-- Safety-net floor for a Market Mayhem effect: a response can never take a
+-- team below ₹1M Cash (10 lakhs), 20k Customers, 1 Reputation or 1 Innovation
+-- — stricter than the general 0 floor used elsewhere in the game.
+create or replace function fn_clamp_team_mayhem(
+  p_cash int, p_customers int, p_reputation int, p_innovation int,
+  out f1 int, out f2 int, out f3 int, out f4 int
+) language sql immutable as $$
+  select greatest(p_cash, 10),
+         greatest(p_customers, 20000),
+         least(greatest(p_reputation, 1), 5),
+         least(greatest(p_innovation, 1), 10)
+$$;
+
+-- Admin/Super Admin record one team's chosen response (accept/spend/adapt/
+-- partner) to the currently-triggered Market Mayhem event. The team's tier
+-- is looked up from market_tiers via their Market identity card, combined
+-- with the response per the GM Guide's response table, and applied directly
+-- — players never submit this themselves.
+create or replace function fn_record_mayhem_response(
+  p_actor_user_id uuid, p_team_id int, p_mayhem_event_id int,
+  p_response text, p_partner_team_id int, p_request_id uuid
+) returns team_mayhem_responses
+language plpgsql as $$
+declare
+  v_event mayhem_events%rowtype;
+  v_team teams%rowtype;
+  v_partner teams%rowtype;
+  v_tier text;
+  v_next_tier text;
+  v_d_cash int := 0;
+  v_d_customers int := 0;
+  v_d_reputation int := 0;
+  v_d_innovation int := 0;
+  v_partner_d_customers int := 0;
+  v_c record;
+  v_row team_mayhem_responses%rowtype;
+begin
+  if p_response not in ('accept', 'spend', 'adapt', 'partner') then raise exception 'BAD_RESPONSE'; end if;
+
+  select * into v_event from mayhem_events where id = p_mayhem_event_id;
+  if v_event.id is null then raise exception 'EVENT_NOT_FOUND'; end if;
+
+  select * into v_team from teams where id = p_team_id for update;
+  if v_team.id is null then raise exception 'TEAM_NOT_FOUND'; end if;
+
+  select tier into v_tier from market_tiers
+  where mayhem_event_id = p_mayhem_event_id and market_card_id = v_team.market_card_id;
+  if v_tier is null then raise exception 'TIER_NOT_FOUND'; end if;
+
+  v_next_tier := case v_tier when 'hit_hard' then 'hit' when 'hit' then 'unaffected' else v_tier end;
+
+  if p_response = 'accept' then
+    if v_tier in ('hit_hard', 'hit') then
+      v_d_cash := coalesce((v_event.tier_deltas->v_tier->>'cash_l')::int, 0);
+      v_d_customers := coalesce((v_event.tier_deltas->v_tier->>'customers')::int, 0);
+      v_d_reputation := coalesce((v_event.tier_deltas->v_tier->>'reputation')::int, 0);
+      v_d_innovation := coalesce((v_event.tier_deltas->v_tier->>'innovation')::int, 0);
+    else
+      v_d_innovation := 1;
+    end if;
+
+  elsif p_response = 'spend' then
+    v_d_cash := -10; -- cost: ₹1M
+    if v_tier in ('unaffected', 'gains') then
+      v_d_customers := 40000;
+    end if;
+    -- hit_hard/hit: loss cancelled — no further delta beyond the cost
+
+  elsif p_response = 'adapt' then
+    v_d_innovation := -2; -- cost: 2 Innovation
+    if v_tier in ('hit_hard', 'hit') then
+      v_d_cash := v_d_cash + coalesce((v_event.tier_deltas->v_next_tier->>'cash_l')::int, 0);
+      v_d_customers := v_d_customers + coalesce((v_event.tier_deltas->v_next_tier->>'customers')::int, 0) + 20000;
+      v_d_reputation := v_d_reputation + coalesce((v_event.tier_deltas->v_next_tier->>'reputation')::int, 0);
+      v_d_innovation := v_d_innovation + coalesce((v_event.tier_deltas->v_next_tier->>'innovation')::int, 0);
+    else
+      v_d_customers := 40000;
+    end if;
+
+  elsif p_response = 'partner' then
+    if v_tier in ('hit_hard', 'hit') then
+      if p_partner_team_id is null or p_partner_team_id = p_team_id then raise exception 'PARTNER_REQUIRED'; end if;
+      v_d_cash := coalesce((v_event.tier_deltas->v_next_tier->>'cash_l')::int, 0);
+      v_d_customers := coalesce((v_event.tier_deltas->v_next_tier->>'customers')::int, 0);
+      v_d_reputation := coalesce((v_event.tier_deltas->v_next_tier->>'reputation')::int, 0);
+      v_d_innovation := coalesce((v_event.tier_deltas->v_next_tier->>'innovation')::int, 0);
+      v_partner_d_customers := 20000;
+    else
+      v_d_customers := 20000; -- this team is the helper
+    end if;
+  end if;
+
+  v_c := fn_clamp_team_mayhem(
+    v_team.cash_l + v_d_cash, v_team.customers + v_d_customers,
+    v_team.reputation + v_d_reputation, v_team.innovation + v_d_innovation);
+  update teams set cash_l = v_c.f1, customers = v_c.f2, reputation = v_c.f3, innovation = v_c.f4
+  where id = p_team_id;
+
+  if p_response = 'partner' and v_tier in ('hit_hard', 'hit') then
+    select * into v_partner from teams where id = p_partner_team_id for update;
+    if v_partner.id is null then raise exception 'PARTNER_NOT_FOUND'; end if;
+    v_c := fn_clamp_team_mayhem(v_partner.cash_l, v_partner.customers + v_partner_d_customers, v_partner.reputation, v_partner.innovation);
+    update teams set customers = v_c.f2 where id = p_partner_team_id;
+  end if;
+
+  insert into team_mayhem_responses (mayhem_event_id, team_id, tier, response, partner_team_id, applied, recorded_by, request_id)
+  values (p_mayhem_event_id, p_team_id, v_tier, p_response,
+          case when p_response = 'partner' and v_tier in ('hit_hard','hit') then p_partner_team_id else null end,
+          jsonb_build_object('cash_l', v_d_cash, 'customers', v_d_customers, 'reputation', v_d_reputation, 'innovation', v_d_innovation),
+          p_actor_user_id, p_request_id)
+  returning * into v_row;
 
   return v_row;
 end;

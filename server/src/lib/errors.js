@@ -30,8 +30,11 @@ const CODE_MAP = {
   OFFER_NOT_FOUND: [404, 'Trade offer not found.'],
   OFFER_ALREADY_RESOLVED: [409, 'This trade offer was already resolved.'],
   NOT_YOUR_LISTING: [403, 'This is not your listing.'],
-  NO_MAYHEMS_CONFIGURED: [500, 'No mayhems are configured.'],
-  TOO_FAST: [429, 'Please wait before triggering another mayhem.'],
+  NO_MORE_EVENTS: [409, 'All 3 Market Mayhem events have already been triggered.'],
+  EVENT_NOT_FOUND: [404, 'Mayhem event not found.'],
+  TIER_NOT_FOUND: [500, 'No tier configured for this team’s Market card.'],
+  BAD_RESPONSE: [400, 'Unknown response type.'],
+  PARTNER_REQUIRED: [400, 'A partner team is required for this response.'],
 };
 
 export function mapPgError(err) {

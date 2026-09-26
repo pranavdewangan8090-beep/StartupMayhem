@@ -50,21 +50,33 @@ create table action_cards (
 );
 
 -- ---------------------------------------------------------------------------
--- Market Mayhem (single table: catalog + which action cards protect against it
--- + whether/when it has been triggered — no separate protections or event log)
+-- Round 3: Market Mayhem — 3 fixed sequential events. Each Market identity
+-- card sits in one of 4 tiers per event (market_tiers); a team's response
+-- (accept/spend/adapt/partner) combines with its tier to compute the exact
+-- resource delta, applied automatically (see fn_record_mayhem_response).
+-- Admin/Super Admin record each team's response manually — players do not
+-- interact with this in the app.
 -- ---------------------------------------------------------------------------
-create table mayhems (
-  id                       serial primary key,
-  title                    text not null unique,
-  description              text not null,
-  effect_text              text not null,
-  tags                     text[] not null default '{}' check (tags <@ array['finance','social','urban','logistics']::text[]),
-  -- action cards that shield a holding team from this mayhem (checked manually by admins)
-  protected_action_card_ids int[] not null default '{}',
-  is_active                boolean not null default true,
-  is_triggered             boolean not null default false,
-  triggered_at             timestamptz,
-  triggered_by             uuid
+create table mayhem_events (
+  id            serial primary key,
+  number        smallint not null unique check (number between 1 and 3),
+  title         text not null,
+  story_text    text not null,
+  effect_text   text not null,
+  tags          text[] not null default '{}',
+  -- per-tier resource delta for this event, e.g. {"hit_hard":{"customers":-40000},"hit":{"customers":-20000},"unaffected":{},"gains":{"customers":20000}}
+  tier_deltas   jsonb not null,
+  is_triggered  boolean not null default false,
+  triggered_at  timestamptz,
+  triggered_by  uuid
+);
+
+-- which tier each Market identity card falls into, per event
+create table market_tiers (
+  mayhem_event_id  int not null references mayhem_events(id) on delete cascade,
+  market_card_id   int not null references identity_cards(id),
+  tier             text not null check (tier in ('hit_hard', 'hit', 'unaffected', 'gains')),
+  primary key (mayhem_event_id, market_card_id)
 );
 
 -- ---------------------------------------------------------------------------
@@ -106,7 +118,23 @@ create table users (
 );
 create unique index users_one_login_per_team on users(team_id) where team_id is not null;
 
-alter table mayhems add constraint mayhems_triggered_by_fk foreign key (triggered_by) references users(id) on delete set null;
+alter table mayhem_events add constraint mayhem_events_triggered_by_fk foreign key (triggered_by) references users(id) on delete set null;
+
+-- one response per team per event: which option they picked, and the exact
+-- delta that was applied (computed from their Market's tier + the response)
+create table team_mayhem_responses (
+  id               bigserial primary key,
+  mayhem_event_id  int not null references mayhem_events(id) on delete cascade,
+  team_id          int not null references teams(id) on delete cascade,
+  tier             text not null check (tier in ('hit_hard', 'hit', 'unaffected', 'gains')),
+  response         text not null check (response in ('accept', 'spend', 'adapt', 'partner')),
+  partner_team_id  int references teams(id) on delete set null,
+  applied          jsonb not null,
+  recorded_by      uuid references users(id) on delete set null,
+  request_id       uuid not null unique,
+  created_at       timestamptz not null default now(),
+  unique (mayhem_event_id, team_id)
+);
 
 -- ---------------------------------------------------------------------------
 -- Global game switches (single row)
@@ -117,7 +145,7 @@ create table game_state (
   r2_selection_open       boolean not null default false,
   marketplace_open        boolean not null default false,
   card_play_open          boolean not null default true,
-  current_mayhem_id       int references mayhems(id),
+  current_mayhem_event_id int references mayhem_events(id),
   updated_at              timestamptz not null default now()
 );
 insert into game_state (id) values (1);

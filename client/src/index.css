@@ -512,3 +512,166 @@ table.data-table th { color: var(--text-dim); font-weight: 600; font-size: 0.72r
 .table-scroll { overflow-x: auto; }
 
 .section { margin-bottom: 20px; }
+
+/* ---------------------------------------------------------------------
+   Super Admin: desktop sidebar shell.
+   ------------------------------------------------------------------- */
+.super-shell {
+  min-height: 100%;
+  display: flex;
+  position: relative;
+}
+.super-shell::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(circle at 12% 10%, rgba(205, 168, 106, 0.14), transparent 45%),
+    radial-gradient(circle at 88% 20%, rgba(138, 127, 214, 0.14), transparent 50%),
+    linear-gradient(180deg, #0d0e15 0%, #0a0b10 55%, #08090d 100%);
+}
+.super-sidebar {
+  width: 240px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 24px 16px;
+  gap: 4px;
+  background: rgba(14, 15, 22, 0.55);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-right: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+}
+.super-brand { font-weight: 700; font-size: 1.15rem; letter-spacing: 0.02em; color: var(--text); padding: 0 10px; }
+.super-brand span { color: var(--accent); }
+.super-brand-sub { color: var(--text-dim); font-size: 0.75rem; padding: 0 10px 20px; text-transform: uppercase; letter-spacing: 0.06em; }
+.super-nav { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+.super-nav button {
+  text-align: left;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-dim);
+  padding: 11px 14px;
+  border-radius: 10px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.super-nav button:hover { background: rgba(255, 255, 255, 0.04); color: var(--text); }
+.super-nav button.active {
+  background: linear-gradient(135deg, rgba(205, 168, 106, 0.22), rgba(138, 127, 214, 0.18));
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+.super-logout { margin-top: 12px; width: 100%; }
+
+.super-main { flex: 1; min-width: 0; padding: 32px 40px 60px; }
+.super-main-header { margin-bottom: 20px; }
+.super-main-header h1 { font-size: 1.6rem; }
+.super-main-body { max-width: 1180px; }
+
+.desktop-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+@media (min-width: 760px) {
+  .desktop-grid { grid-template-columns: 1fr 1fr; align-items: start; }
+}
+
+.teams-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+@media (min-width: 640px) {
+  .teams-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (min-width: 1000px) {
+  .teams-grid { grid-template-columns: repeat(3, 1fr); }
+}
+.team-card { margin-bottom: 0; }
+
+.toggle-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.toggle-row:last-child { border-bottom: none; }
+
+/* Round 3: Market Mayhem — tier pills, response form, full-screen reveal */
+.pill.tier-hit_hard { background: color-mix(in srgb, var(--danger) 20%, transparent); color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, transparent); }
+.pill.tier-hit { background: color-mix(in srgb, var(--warning) 18%, transparent); color: var(--warning); border-color: color-mix(in srgb, var(--warning) 40%, transparent); }
+.pill.tier-unaffected { background: rgba(255, 255, 255, 0.06); color: var(--text-dim); border-color: var(--border); }
+.pill.tier-gains { background: color-mix(in srgb, var(--success) 18%, transparent); color: var(--success); border-color: color-mix(in srgb, var(--success) 40%, transparent); }
+
+.response-form { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.response-form select {
+  padding: 7px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text);
+  font-size: 0.8rem;
+}
+.response-recorded { color: var(--text-dim); font-size: 0.82rem; }
+
+.mayhem-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(4, 4, 8, 0.78);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+}
+.mayhem-overlay-card {
+  position: relative;
+  max-width: 640px;
+  width: 100%;
+  background: rgba(22, 20, 26, 0.8);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--border-strong);
+  border-radius: 24px;
+  padding: 36px;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
+  animation: modal-pop 0.2s ease;
+}
+.mayhem-overlay-card h1 { font-size: 1.7rem; margin-top: 10px; }
+.mayhem-overlay-story { font-size: 1rem; margin-top: 10px; }
+.mayhem-overlay-effect { margin-top: 10px; color: var(--text); }
+.mayhem-event-pill { background: color-mix(in srgb, var(--danger) 20%, transparent); color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, transparent); }
+
+/* ---------------------------------------------------------------------
+   Player: Action Cards tab — glassmorphism gallery instead of a plain
+   stacked list.
+   ------------------------------------------------------------------- */
+.action-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+@media (min-width: 520px) {
+  .action-grid { grid-template-columns: repeat(2, 1fr); }
+}
+.action-card-tile {
+  transition: transform 0.15s ease, border-color 0.15s ease;
+  padding: 16px 16px 16px 18px;
+}
+.action-card-tile::before { width: 4px; border-radius: 4px 0 0 4px; }
+.action-card-tile .name { font-size: 0.95rem; }
+.action-card-tile .row { margin-top: 4px; }
+
+@media (min-width: 900px) {
+  .app-shell .page { max-width: 900px; }
+}

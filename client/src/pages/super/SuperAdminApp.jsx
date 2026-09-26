@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import TopBar from '../../components/TopBar.jsx';
+import { useAuth } from '../../lib/AuthContext.jsx';
 import TeamResourcePanel from '../../components/TeamResourcePanel.jsx';
 import ControlRoomTab from './ControlRoomTab.jsx';
 import ScoresTab from './ScoresTab.jsx';
@@ -14,21 +14,34 @@ const TABS = [
 
 export default function SuperAdminApp() {
   const [tab, setTab] = useState('control');
+  const { logout } = useAuth();
+  const active = TABS.find((t) => t.key === tab);
 
   return (
-    <div className="app-shell">
-      <TopBar title="Super Admin" />
-      <div className="tabbar">
-        {TABS.map((t) => (
-          <button key={t.key} className={tab === t.key ? 'active' : ''} onClick={() => setTab(t.key)}>{t.label}</button>
-        ))}
-      </div>
-      <div className="page">
-        {tab === 'control' && <ControlRoomTab />}
-        {tab === 'teams' && <TeamResourcePanel />}
-        {tab === 'scores' && <ScoresTab />}
-        {tab === 'manage' && <TeamManagementTab />}
-      </div>
+    <div className="super-shell">
+      <aside className="super-sidebar">
+        <div className="super-brand">Startup<span>Mayhem</span></div>
+        <div className="super-brand-sub">Super Admin</div>
+        <nav className="super-nav">
+          {TABS.map((t) => (
+            <button key={t.key} className={tab === t.key ? 'active' : ''} onClick={() => setTab(t.key)}>
+              {t.label}
+            </button>
+          ))}
+        </nav>
+        <button className="logout-btn super-logout" onClick={logout}>Log out</button>
+      </aside>
+      <main className="super-main">
+        <div className="super-main-header">
+          <h1>{active?.label}</h1>
+        </div>
+        <div className="super-main-body">
+          {tab === 'control' && <ControlRoomTab />}
+          {tab === 'teams' && <TeamResourcePanel />}
+          {tab === 'scores' && <ScoresTab />}
+          {tab === 'manage' && <TeamManagementTab />}
+        </div>
+      </main>
     </div>
   );
 }

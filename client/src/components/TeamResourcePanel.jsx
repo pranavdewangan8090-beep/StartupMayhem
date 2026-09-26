@@ -67,22 +67,24 @@ export default function TeamResourcePanel() {
         <p>Adjust resources or decision points directly.</p>
       </div>
 
-      {teams.map((t) => (
-        <div key={t.id} className="card-surface section">
-          <h2>{t.team_code}</h2>
-          <p>{t.market_title} · {t.customer_title} · {t.problem_title}</p>
-          <div className="grid-2" style={{ marginBottom: 12 }}>
-            <div className="stat-tile"><div className="value">₹{t.cash_l / 10}M</div><div className="label">Cash</div></div>
-            <div className="stat-tile"><div className="value">{(t.customers / 1000).toFixed(0)}k</div><div className="label">Customers</div></div>
-            <div className="stat-tile"><div className="value">{t.reputation}/5</div><div className="label">Reputation</div></div>
-            <div className="stat-tile"><div className="value">{t.innovation}/10</div><div className="label">Innovation</div></div>
+      <div className="teams-grid">
+        {teams.map((t) => (
+          <div key={t.id} className="card-surface section team-card">
+            <h2>{t.team_code}</h2>
+            <p>{t.market_title} · {t.customer_title} · {t.problem_title}</p>
+            <div className="grid-2" style={{ marginBottom: 12 }}>
+              <div className="stat-tile"><div className="value">₹{t.cash_l / 10}M</div><div className="label">Cash</div></div>
+              <div className="stat-tile"><div className="value">{(t.customers / 1000).toFixed(0)}k</div><div className="label">Customers</div></div>
+              <div className="stat-tile"><div className="value">{t.reputation}/5</div><div className="label">Reputation</div></div>
+              <div className="stat-tile"><div className="value">{t.innovation}/10</div><div className="label">Innovation</div></div>
+            </div>
+            <div className="row" style={{ display: 'flex', gap: 8 }}>
+              <button className="btn btn-primary btn-sm" onClick={() => openResourceModal(t)}>Adjust Resources</button>
+              <button className="btn btn-ghost btn-sm" onClick={() => openPointsModal(t)}>Decision Points</button>
+            </div>
           </div>
-          <div className="row" style={{ display: 'flex', gap: 8 }}>
-            <button className="btn btn-primary btn-sm" onClick={() => openResourceModal(t)}>Adjust Resources</button>
-            <button className="btn btn-ghost btn-sm" onClick={() => openPointsModal(t)}>Decision Points</button>
-          </div>
-        </div>
-      ))}
+        ))}
+      </div>
 
       {modal?.mode === 'resources' && (
         <Modal onClose={() => setModal(null)}>

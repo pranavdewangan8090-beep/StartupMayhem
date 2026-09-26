@@ -80,24 +80,28 @@ export default function MarketTab({ gameState, onChanged }) {
         <div className="section">
           <h2 style={{ marginTop: 16 }}>Your Listings</h2>
           {listings.mine.length === 0 && <p>You have nothing listed.</p>}
-          {listings.mine.map((l) => (
-            <div key={l.listing_id} className={`action-card-tile cat-${l.category}`} style={{ marginBottom: 10 }}>
-              <div className="name">{l.name}</div>
-              <div className="effect">{l.effect_text}</div>
-              <button className="btn btn-ghost btn-sm" disabled={busy} onClick={() => unlist(l.listing_id)}>Unlist</button>
-            </div>
-          ))}
+          <div className="action-grid">
+            {listings.mine.map((l) => (
+              <div key={l.listing_id} className={`action-card-tile cat-${l.category}`}>
+                <div className="name">{l.name}</div>
+                <div className="effect">{l.effect_text}</div>
+                <button className="btn btn-ghost btn-sm" disabled={busy} onClick={() => unlist(l.listing_id)}>Unlist</button>
+              </div>
+            ))}
+          </div>
 
           <h2 style={{ marginTop: 20 }}>Other Teams' Listings</h2>
           {listings.others.length === 0 && <p>Nothing listed yet.</p>}
-          {listings.others.map((l) => (
-            <div key={l.listing_id} className={`action-card-tile cat-${l.category}`} style={{ marginBottom: 10 }}>
-              <span className="pill" style={{ background: 'var(--bg-elevated)', color: 'var(--text-dim)' }}>from {l.seller_team_code}</span>
-              <div className="name" style={{ marginTop: 6 }}>{l.name}</div>
-              <div className="effect">{l.effect_text}</div>
-              <button className="btn btn-primary btn-sm" disabled={busy} onClick={() => setOfferFor(l)}>Offer a Trade</button>
-            </div>
-          ))}
+          <div className="action-grid">
+            {listings.others.map((l) => (
+              <div key={l.listing_id} className={`action-card-tile cat-${l.category}`}>
+                <span className="pill" style={{ background: 'var(--bg-elevated)', color: 'var(--text-dim)' }}>from {l.seller_team_code}</span>
+                <div className="name" style={{ marginTop: 6 }}>{l.name}</div>
+                <div className="effect">{l.effect_text}</div>
+                <button className="btn btn-primary btn-sm" disabled={busy} onClick={() => setOfferFor(l)}>Offer a Trade</button>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
