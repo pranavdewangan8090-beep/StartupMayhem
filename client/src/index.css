@@ -236,10 +236,10 @@ p { color: var(--text-dim); line-height: 1.45; margin: 4px 0; }
    Identity card: 3D flip, single-column stacked layout on phones so the
    full description always fits without truncation.
    ------------------------------------------------------------------- */
-.flip-card-wrap { margin-bottom: 14px; }
+.flip-card-wrap { margin-bottom: 12px; }
 .flip-card {
   perspective: 1400px;
-  height: 430px;
+  height: 220px;
   cursor: pointer;
 }
 .flip-card-inner {
@@ -254,9 +254,9 @@ p { color: var(--text-dim); line-height: 1.45; margin: 4px 0; }
   position: absolute;
   inset: 0;
   backface-visibility: hidden;
-  border-radius: var(--radius);
+  border-radius: 14px;
   border: 1px solid var(--border-strong);
-  padding: 18px;
+  padding: 12px 14px;
   display: flex;
   flex-direction: column;
   box-shadow: var(--shadow);
@@ -286,44 +286,45 @@ p { color: var(--text-dim); line-height: 1.45; margin: 4px 0; }
   mask-image: radial-gradient(circle at 50% 50%, black 40%, transparent 78%);
 }
 .card-back-mark {
-  font-size: 2.4rem;
+  font-size: 1.5rem;
   font-weight: 800;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   color: var(--accent-soft);
   border: 1px solid var(--border-strong);
   border-radius: 999px;
-  width: 84px;
-  height: 84px;
+  width: 52px;
+  height: 52px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: rgba(255, 255, 255, 0.04);
 }
-.card-back-hint { color: var(--text-dim); font-size: 0.78rem; letter-spacing: 0.04em; text-transform: uppercase; }
+.card-back-hint { color: var(--text-dim); font-size: 0.68rem; letter-spacing: 0.04em; text-transform: uppercase; }
 .flip-face.front {
   transform: rotateY(180deg);
   justify-content: flex-start;
-  gap: 10px;
+  gap: 4px;
 }
 .front-top { flex: 0 0 auto; }
 .flip-face .cat-tag { align-self: flex-start; }
-.flip-face .title { font-size: 1.15rem; font-weight: 700; margin-top: 10px; color: var(--text); }
-.flip-face .tagline { font-style: italic; font-size: 0.8rem; color: var(--text-dim); margin-top: 2px; }
+.flip-face .title { font-size: 0.92rem; font-weight: 700; margin-top: 6px; color: var(--text); line-height: 1.25; }
+.flip-face .tagline { font-style: italic; font-size: 0.72rem; color: var(--text-dim); margin-top: 1px; }
 .flip-face .desc {
-  font-size: 0.85rem;
+  font-size: 0.74rem;
   color: var(--text-dim);
-  line-height: 1.5;
+  line-height: 1.35;
   overflow-y: auto;
   flex: 1;
   padding-right: 2px;
+  margin-top: 2px;
 }
-.tag-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.tag-row { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
 .tag-chip {
-  font-size: 0.65rem;
+  font-size: 0.58rem;
   font-weight: 600;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.02em;
   text-transform: uppercase;
-  padding: 3px 9px;
+  padding: 2px 7px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid var(--border);
@@ -333,23 +334,26 @@ p { color: var(--text-dim); line-height: 1.45; margin: 4px 0; }
   flex: 0 0 auto;
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
-  margin-top: 8px;
+  gap: 4px;
+  margin-top: 4px;
 }
 .stat-chip {
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 8px;
+  border-radius: 8px;
+  padding: 4px 2px;
   text-align: center;
 }
-.stat-chip-value { display: block; font-weight: 700; color: var(--text); font-size: 0.95rem; }
-.stat-chip-label { display: block; font-size: 0.65rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
+.stat-chip-value { display: block; font-weight: 700; color: var(--text); font-size: 0.72rem; }
+.stat-chip-label { display: block; font-size: 0.52rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.03em; margin-top: 1px; }
 
 .card-grid {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 14px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+@media (min-width: 560px) {
+  .card-grid { grid-template-columns: repeat(3, 1fr); }
 }
 
 .replace-btn {

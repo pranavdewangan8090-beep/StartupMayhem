@@ -149,24 +149,31 @@ export default function ActionCardsTab({ gameState, onChanged }) {
         ))}
       </div>
 
-      <div className="card-surface section">
-        <h2>Action Card Catalog</h2>
-        <p>{gameState?.r2_selection_open ? `Pick up to 4 cards, one request at a time.` : 'Selection is currently closed by the Super Admin.'}</p>
-        {catalog.map((c) => (
-          <div key={c.id} className={`action-card-tile cat-${c.category}`} style={{ marginBottom: 10, opacity: heldIds.has(c.id) ? 0.5 : 1 }}>
-            <span className={`pill cat-${c.category}`}>{CAT_LABEL[c.category]}</span>
-            <div className="name" style={{ marginTop: 6 }}>{c.name}</div>
-            <div className="effect">{c.effect_text}</div>
-            <button
-              className="btn btn-primary btn-sm"
-              disabled={busy || !gameState?.r2_selection_open || !canRequestMore || heldIds.has(c.id)}
-              onClick={() => request(c.id)}
-            >
-              {heldIds.has(c.id) ? 'Already requested' : 'Make Request'}
-            </button>
-          </div>
-        ))}
-      </div>
+      {gameState?.r2_selection_open ? (
+        <div className="card-surface section">
+          <h2>Action Card Catalog</h2>
+          <p>Pick up to 4 cards, one request at a time.</p>
+          {catalog.map((c) => (
+            <div key={c.id} className={`action-card-tile cat-${c.category}`} style={{ marginBottom: 10, opacity: heldIds.has(c.id) ? 0.5 : 1 }}>
+              <span className={`pill cat-${c.category}`}>{CAT_LABEL[c.category]}</span>
+              <div className="name" style={{ marginTop: 6 }}>{c.name}</div>
+              <div className="effect">{c.effect_text}</div>
+              <button
+                className="btn btn-primary btn-sm"
+                disabled={busy || !canRequestMore || heldIds.has(c.id)}
+                onClick={() => request(c.id)}
+              >
+                {heldIds.has(c.id) ? 'Already requested' : 'Make Request'}
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="card-surface section">
+          <h2>Action Card Catalog</h2>
+          <p>The catalog opens once the Super Admin starts card selection.</p>
+        </div>
+      )}
 
       {playTarget && (
         <Modal onClose={() => setPlayTarget(null)}>
