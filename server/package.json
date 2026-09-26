@@ -7,7 +7,8 @@
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
     "seed:cards": "psql \"$DATABASE_URL\" -f sql/001_schema.sql -f sql/002_seed_identity_cards.sql -f sql/003_seed_action_cards.sql -f sql/004_seed_mayhems.sql -f sql/005_functions.sql",
-    "seed:users": "node scripts/seedUsers.js"
+    "seed:users": "node scripts/seedUsers.js",
+    "test": "node --test"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

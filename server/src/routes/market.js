@@ -44,7 +44,10 @@ router.post(
   })
 );
 
-const unlistSchema = z.object({ listingId: z.number().int().positive(), requestId: z.string().uuid() });
+// listingId is a bigserial primary key — pg returns bigint columns as
+// strings (to avoid precision loss past 2^53), so this must coerce rather
+// than require an already-numeric JSON value.
+const unlistSchema = z.object({ listingId: z.coerce.number().int().positive(), requestId: z.string().uuid() });
 router.post(
   '/unlist',
   actionLimiter,
@@ -70,7 +73,7 @@ router.get(
 );
 
 const offerSchema = z.object({
-  listingId: z.number().int().positive(),
+  listingId: z.coerce.number().int().positive(),
   offeredTeamActionCardId: z.string().uuid(),
   requestId: z.string().uuid(),
 });
@@ -109,7 +112,7 @@ router.get(
   })
 );
 
-const respondOfferSchema = z.object({ offerId: z.number().int().positive(), accept: z.boolean(), requestId: z.string().uuid() });
+const respondOfferSchema = z.object({ offerId: z.coerce.number().int().positive(), accept: z.boolean(), requestId: z.string().uuid() });
 router.post(
   '/offers/respond',
   actionLimiter,

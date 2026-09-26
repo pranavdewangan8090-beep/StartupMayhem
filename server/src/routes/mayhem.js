@@ -66,7 +66,14 @@ router.get(
        left join team_mayhem_responses r on r.mayhem_event_id = $1 and r.team_id = t.id
        left join teams pt on pt.id = r.partner_team_id
        where t.is_active
-       order by t.team_code`,
+       order by case mt.tier
+                  when 'hit_hard' then 0
+                  when 'hit' then 1
+                  when 'unaffected' then 2
+                  when 'gains' then 3
+                  else 4
+                end,
+                t.team_code`,
       [eventId]
     );
     res.json(rows);

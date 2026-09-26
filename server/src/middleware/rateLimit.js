@@ -1,10 +1,19 @@
 import rateLimit from 'express-rate-limit';
 
+// Every limit below can be raised via env var for a specific run (e.g. an
+// automated test suite that legitimately makes many requests in a few
+// seconds) without touching the safe defaults everyone else gets.
+function limitFromEnv(envVar, fallback) {
+  const raw = process.env[envVar];
+  const n = raw ? parseInt(raw, 10) : NaN;
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+}
+
 // Generous general limit: ~30 phones polling every 4s is about 8 req/s total,
 // well under this per-IP limit (most phones will be on different IPs/NAT anyway).
 export const generalLimiter = rateLimit({
   windowMs: 60 * 1000,
-  limit: 120,
+  limit: limitFromEnv('RATE_LIMIT_GENERAL', 120),
   standardHeaders: true,
   legacyHeaders: false,
 });
@@ -15,7 +24,7 @@ export const generalLimiter = rateLimit({
 // guessing an 8-character random password, but won't lock out a whole room.
 export const loginLimiter = rateLimit({
   windowMs: 60 * 1000,
-  limit: 40,
+  limit: limitFromEnv('RATE_LIMIT_LOGIN', 40),
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'RATE_LIMITED', message: 'Too many login attempts. Wait a minute and try again.' },
@@ -24,7 +33,7 @@ export const loginLimiter = rateLimit({
 // A slightly tighter limit for state-changing game actions, per IP.
 export const actionLimiter = rateLimit({
   windowMs: 10 * 1000,
-  limit: 20,
+  limit: limitFromEnv('RATE_LIMIT_ACTION', 20),
   standardHeaders: true,
   legacyHeaders: false,
 });

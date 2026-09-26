@@ -236,10 +236,11 @@ p { color: var(--text-dim); line-height: 1.45; margin: 4px 0; }
    Identity card: 3D flip, single-column stacked layout on phones so the
    full description always fits without truncation.
    ------------------------------------------------------------------- */
-.flip-card-wrap { margin-bottom: 12px; }
+.flip-card-wrap { margin-bottom: 12px; display: flex; flex-direction: column; align-items: center; }
 .flip-card {
   perspective: 1400px;
   height: 220px;
+  width: 100%;
   cursor: pointer;
 }
 .flip-card-inner {
@@ -358,7 +359,6 @@ p { color: var(--text-dim); line-height: 1.45; margin: 4px 0; }
 
 .replace-btn {
   margin-top: 8px;
-  align-self: stretch;
 }
 
 /* enlarged modal — frosted glass panel */
@@ -428,7 +428,8 @@ p { color: var(--text-dim); line-height: 1.45; margin: 4px 0; }
 .action-card-tile.listed { filter: grayscale(0.6) brightness(0.6); }
 .action-card-tile .name { font-weight: 700; margin-bottom: 2px; color: var(--text); }
 .action-card-tile .effect { font-size: 0.8rem; color: var(--text-dim); margin-bottom: 10px; }
-.action-card-tile .row { display: flex; gap: 8px; }
+.row { display: flex; gap: 8px; align-items: center; justify-content: center; flex-wrap: wrap; }
+.action-card-tile .row { display: flex; gap: 8px; justify-content: center; margin-top: 10px; }
 
 .pill.cat-self_help { background: color-mix(in srgb, var(--cat-self-help) 18%, transparent); color: var(--cat-self-help); border-color: color-mix(in srgb, var(--cat-self-help) 40%, transparent); }
 .pill.cat-attack { background: color-mix(in srgb, var(--cat-attack) 18%, transparent); color: var(--cat-attack); border-color: color-mix(in srgb, var(--cat-attack) 40%, transparent); }
@@ -669,8 +670,10 @@ table.data-table th { color: var(--text-dim); font-weight: 600; font-size: 0.72r
   padding: 16px 16px 16px 18px;
 }
 .action-card-tile::before { width: 4px; border-radius: 4px 0 0 4px; }
+.action-card-tile { text-align: center; }
+.action-card-tile .name, .action-card-tile .effect { text-align: left; }
 .action-card-tile .name { font-size: 0.95rem; }
-.action-card-tile .row { margin-top: 4px; }
+.action-card-tile > .btn { margin-top: 10px; }
 
 @media (min-width: 900px) {
   .app-shell .page { max-width: 900px; }

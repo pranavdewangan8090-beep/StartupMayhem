@@ -132,7 +132,9 @@ router.get(
   })
 );
 
-const respondDealSchema = z.object({ cardPlayId: z.number().int().positive(), accept: z.boolean(), requestId: z.string().uuid() });
+// cardPlayId is a bigserial primary key — pg returns bigint columns as
+// strings, so this must coerce rather than require an already-numeric value.
+const respondDealSchema = z.object({ cardPlayId: z.coerce.number().int().positive(), accept: z.boolean(), requestId: z.string().uuid() });
 router.post(
   '/deals/respond',
   actionLimiter,

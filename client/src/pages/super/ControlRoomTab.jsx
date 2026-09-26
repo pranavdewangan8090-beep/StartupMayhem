@@ -86,10 +86,15 @@ export default function ControlRoomTab() {
   async function trigger() {
     setBusy(true);
     try {
-      await api.post('/mayhem/trigger', {});
-      toast('Mayhem event triggered!', 'success');
-      await load();
+      const triggered = await api.post('/mayhem/trigger', {});
+      // set the mayhem + open the overlay from the trigger response itself
+      // (no round trip through load() needed to know what just got triggered)
+      setMayhem(triggered);
       setShowOverlay(true);
+      toast('Mayhem event triggered!', 'success');
+      const [ev, ts] = await Promise.all([api.get('/mayhem/events'), api.get('/mayhem/team-status')]);
+      setEvents(ev);
+      setTeamStatus(ts);
     } catch (err) {
       toast(err instanceof ApiError ? err.message : 'Could not trigger the next event.', 'error');
     } finally { setBusy(false); }
