@@ -4,10 +4,11 @@
 -- multi-statement writes itself, so two admins or two teams acting at once can
 -- never race each other or leave the game in a half-updated state.
 --
--- Idempotency: every function takes a `p_request_id uuid`. Callers generate it
--- client-side (or the route generates one per submit) and retry-safe: a repeat
--- call with the same request_id raises 'DUPLICATE_REQUEST' rather than applying
--- twice (double-tap / replay protection).
+-- No history/log tables: state lives only on teams, mayhems and team_action_cards.
+-- Duplicate-submit protection is kept only where a functional row already exists
+-- to hold it (team_action_cards, card_plays, market_listings, trade_offers);
+-- one-off admin actions (resource/points adjustments, identity replacements) are
+-- applied directly with no dedup bookkeeping.
 
 create extension if not exists pgcrypto;
 
@@ -32,7 +33,7 @@ language sql stable as $$
 $$;
 
 -- ---------------------------------------------------------------------------
--- R1: identity card replacement (max 3 per team)
+-- R1: identity card replacement (max 3 per team, enforced on teams row)
 -- ---------------------------------------------------------------------------
 create or replace function fn_replace_identity_card(
   p_team_id int, p_category text, p_request_id uuid
@@ -42,12 +43,7 @@ declare
   v_team teams%rowtype;
   v_old_id int;
   v_new identity_cards%rowtype;
-  v_col text;
 begin
-  if exists (select 1 from card_replacements where request_id = p_request_id) then
-    raise exception 'DUPLICATE_REQUEST';
-  end if;
-
   select * into v_team from teams where id = p_team_id for update;
   if v_team.id is null then raise exception 'TEAM_NOT_FOUND'; end if;
 
@@ -58,7 +54,6 @@ begin
     raise exception 'REPLACEMENT_LIMIT_REACHED';
   end if;
 
-  v_col := p_category || '_card_id';
   case p_category
     when 'market' then v_old_id := v_team.market_card_id;
     when 'customer' then v_old_id := v_team.customer_card_id;
@@ -86,9 +81,6 @@ begin
     reputation  = case when p_category = 'resources' then v_new.start_reputation else reputation end,
     innovation  = case when p_category = 'resources' then v_new.start_innovation else innovation end
   where id = p_team_id;
-
-  insert into card_replacements (team_id, category, old_card_id, new_card_id, request_id)
-  values (p_team_id, p_category, v_old_id, v_new.id, p_request_id);
 
   update game_state set updated_at = now() where id = 1;
   return v_new;
@@ -187,9 +179,8 @@ begin
 
   update team_action_cards set status = 'used', used_at = now() where id = p_team_action_card_id;
 
-  insert into card_plays (team_action_card_id, action_card_id, team_id, status,
-                           self_applied, request_id, resolved_at)
-  values (p_team_action_card_id, v_card.id, p_team_id, 'applied', v_after, p_request_id, now());
+  insert into card_plays (team_action_card_id, action_card_id, team_id, status, request_id)
+  values (p_team_action_card_id, v_card.id, p_team_id, 'applied', p_request_id);
 
   return jsonb_build_object('before', v_before, 'after', v_after);
 end;
@@ -262,10 +253,8 @@ begin
 
   update team_action_cards set status = 'used', used_at = now() where id = p_team_action_card_id;
 
-  insert into card_plays (team_action_card_id, action_card_id, team_id, other_team_id, status,
-                           self_applied, other_applied, request_id, resolved_at)
-  values (p_team_action_card_id, v_card.id, p_team_id, p_target_team_id, 'applied',
-          v_self_after, v_target_after, p_request_id, now());
+  insert into card_plays (team_action_card_id, action_card_id, team_id, other_team_id, status, request_id)
+  values (p_team_action_card_id, v_card.id, p_team_id, p_target_team_id, 'applied', p_request_id);
 
   -- the attacked team must be told what happened and who did it
   insert into notifications (team_id, type, title, body)
@@ -338,11 +327,6 @@ declare
   v_initiator_after jsonb;
   v_partner_after jsonb;
 begin
-  if exists (select 1 from resource_adjustments where request_id = p_request_id)
-     or exists (select 1 from card_plays where request_id = p_request_id and id <> p_card_play_id) then
-    raise exception 'DUPLICATE_REQUEST';
-  end if;
-
   select * into v_play from card_plays where id = p_card_play_id for update;
   if v_play.id is null or v_play.other_team_id <> p_partner_team_id then raise exception 'DEAL_NOT_FOUND'; end if;
   if v_play.status <> 'pending' then raise exception 'DEAL_ALREADY_RESOLVED'; end if;
@@ -350,7 +334,7 @@ begin
   select * into v_card from action_cards where id = v_play.action_card_id;
 
   if not p_accept then
-    update card_plays set status = 'rejected', resolved_at = now() where id = p_card_play_id;
+    update card_plays set status = 'rejected' where id = p_card_play_id;
     update team_action_cards set status = 'held' where id = v_play.team_action_card_id;
     return jsonb_build_object('accepted', false);
   end if;
@@ -383,9 +367,7 @@ begin
   v_partner_after := fn_team_snapshot(p_partner_team_id);
 
   update team_action_cards set status = 'used', used_at = now() where id = v_play.team_action_card_id;
-  update card_plays set status = 'applied', self_applied = v_initiator_after,
-                        other_applied = v_partner_after, resolved_at = now()
-  where id = p_card_play_id;
+  update card_plays set status = 'applied' where id = p_card_play_id;
 
   return jsonb_build_object('accepted', true, 'initiator_after', v_initiator_after, 'partner_after', v_partner_after);
 end;
@@ -430,10 +412,6 @@ language plpgsql as $$
 declare
   v_listing market_listings%rowtype;
 begin
-  if exists (select 1 from market_listings where id <> p_listing_id and request_id = p_request_id) then
-    raise exception 'DUPLICATE_REQUEST';
-  end if;
-
   select * into v_listing from market_listings where id = p_listing_id for update;
   if v_listing.id is null or v_listing.seller_team_id <> p_team_id then raise exception 'LISTING_NOT_FOUND'; end if;
   if v_listing.status <> 'active' then raise exception 'LISTING_NOT_ACTIVE'; end if;
@@ -496,10 +474,6 @@ declare
   v_listing market_listings%rowtype;
   v_other_offer_id bigint;
 begin
-  if exists (select 1 from trade_offers where id <> p_offer_id and request_id = p_request_id) then
-    raise exception 'DUPLICATE_REQUEST';
-  end if;
-
   select * into v_offer from trade_offers where id = p_offer_id for update;
   if v_offer.id is null then raise exception 'OFFER_NOT_FOUND'; end if;
   if v_offer.status <> 'pending' then raise exception 'OFFER_ALREADY_RESOLVED'; end if;
@@ -540,12 +514,11 @@ end;
 $$;
 
 -- ---------------------------------------------------------------------------
--- Admin / Super Admin: resource and decision-point adjustments (deltas + audit)
+-- Admin / Super Admin: resource and decision-point adjustments (direct, no log)
 -- ---------------------------------------------------------------------------
 create or replace function fn_admin_adjust_resources(
-  p_team_id int, p_actor_user_id uuid,
-  p_d_cash_l int, p_d_customers int, p_d_reputation int, p_d_innovation int,
-  p_reason text, p_request_id uuid
+  p_team_id int,
+  p_d_cash_l int, p_d_customers int, p_d_reputation int, p_d_innovation int
 ) returns jsonb
 language plpgsql as $$
 declare
@@ -554,10 +527,6 @@ declare
   v_after jsonb;
   v_c record;
 begin
-  if p_request_id is not null and exists (select 1 from resource_adjustments where request_id = p_request_id) then
-    raise exception 'DUPLICATE_REQUEST';
-  end if;
-
   select * into v_team from teams where id = p_team_id for update;
   if v_team.id is null then raise exception 'TEAM_NOT_FOUND'; end if;
   v_before := fn_team_snapshot(p_team_id);
@@ -570,38 +539,21 @@ begin
   where id = p_team_id;
 
   v_after := fn_team_snapshot(p_team_id);
-
-  insert into resource_adjustments (team_id, actor_user_id, source, delta, applied, before, after, reason, request_id)
-  values (p_team_id, p_actor_user_id, 'admin',
-          jsonb_build_object('cash_l', p_d_cash_l, 'customers', p_d_customers,
-                              'reputation', p_d_reputation, 'innovation', p_d_innovation),
-          jsonb_build_object(
-            'cash_l', (v_after->>'cash_l')::int - (v_before->>'cash_l')::int,
-            'customers', (v_after->>'customers')::int - (v_before->>'customers')::int,
-            'reputation', (v_after->>'reputation')::int - (v_before->>'reputation')::int,
-            'innovation', (v_after->>'innovation')::int - (v_before->>'innovation')::int
-          ), v_before, v_after, coalesce(p_reason, ''), p_request_id);
-
   return jsonb_build_object('before', v_before, 'after', v_after);
 end;
 $$;
 
 create or replace function fn_admin_adjust_decision_points(
-  p_team_id int, p_actor_user_id uuid, p_round smallint, p_delta smallint, p_note text, p_request_id uuid
-) returns decision_points
+  p_team_id int, p_delta int
+) returns teams
 language plpgsql as $$
 declare
-  v_row decision_points%rowtype;
+  v_row teams%rowtype;
 begin
-  if exists (select 1 from decision_points where request_id = p_request_id) then
-    raise exception 'DUPLICATE_REQUEST';
-  end if;
-  if not exists (select 1 from teams where id = p_team_id) then raise exception 'TEAM_NOT_FOUND'; end if;
-
-  insert into decision_points (team_id, round, delta, actor_user_id, note, request_id)
-  values (p_team_id, p_round, p_delta, p_actor_user_id, coalesce(p_note,''), p_request_id)
+  update teams set decision_points = decision_points + p_delta
+  where id = p_team_id
   returning * into v_row;
-
+  if v_row.id is null then raise exception 'TEAM_NOT_FOUND'; end if;
   return v_row;
 end;
 $$;
@@ -610,29 +562,25 @@ $$;
 -- Super Admin: trigger a random mayhem (does not repeat one already triggered
 -- while any un-triggered mayhem remains)
 -- ---------------------------------------------------------------------------
-create or replace function fn_trigger_mayhem(p_actor_user_id uuid, p_request_id uuid) returns mayhem_events
+create or replace function fn_trigger_mayhem(p_actor_user_id uuid) returns mayhems
 language plpgsql as $$
 declare
-  v_mayhem_id int;
-  v_row mayhem_events%rowtype;
+  v_row mayhems%rowtype;
 begin
-  if exists (select 1 from mayhem_events where triggered_by = p_actor_user_id and triggered_at > now() - interval '2 seconds') then
-    raise exception 'TOO_FAST';
-  end if;
-
-  select id into v_mayhem_id from mayhems
-  where is_active and id not in (select mayhem_id from mayhem_events)
+  select * into v_row from mayhems
+  where is_active and not is_triggered
   order by random() limit 1;
 
-  if v_mayhem_id is null then
-    select id into v_mayhem_id from mayhems where is_active order by random() limit 1;
+  if v_row.id is null then
+    select * into v_row from mayhems where is_active order by random() limit 1;
   end if;
-  if v_mayhem_id is null then raise exception 'NO_MAYHEMS_CONFIGURED'; end if;
+  if v_row.id is null then raise exception 'NO_MAYHEMS_CONFIGURED'; end if;
 
-  insert into mayhem_events (mayhem_id, triggered_by) values (v_mayhem_id, p_actor_user_id)
+  update mayhems set is_triggered = true, triggered_at = now(), triggered_by = p_actor_user_id
+  where id = v_row.id
   returning * into v_row;
 
-  update game_state set current_mayhem_event_id = v_row.id, updated_at = now() where id = 1;
+  update game_state set current_mayhem_id = v_row.id, updated_at = now() where id = 1;
 
   return v_row;
 end;

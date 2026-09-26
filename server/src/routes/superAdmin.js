@@ -17,12 +17,6 @@ function randomPassword() {
   return Array.from(crypto.randomFillSync(new Uint8Array(8))).map((b) => alphabet[b % alphabet.length]).join('');
 }
 
-async function audit(actorUserId, action, details) {
-  await pool.query('insert into audit_log (actor_user_id, action, details) values ($1,$2,$3)', [
-    actorUserId, action, details,
-  ]);
-}
-
 // ---------------------------------------------------------------------------
 // Toggles
 // ---------------------------------------------------------------------------
@@ -37,7 +31,6 @@ router.post(
   h(async (req, res) => {
     const { key, value } = req.body;
     await pool.query(`update game_state set ${key} = $1, updated_at = now() where id = 1`, [value]);
-    await audit(req.user.id, 'toggle', { key, value });
     res.json({ ok: true });
   })
 );
@@ -90,7 +83,6 @@ router.post(
       return { teamId, password };
     });
 
-    await audit(req.user.id, 'add_team', { teamCode: req.body.teamCode, teamId: result.teamId });
     res.json({ teamId: result.teamId, teamCode: req.body.teamCode, password: result.password });
   })
 );
@@ -102,7 +94,6 @@ router.post(
     const teamId = parseInt(req.params.teamId, 10);
     await pool.query('update teams set is_active = false where id = $1', [teamId]);
     await pool.query('update users set is_active = false where team_id = $1', [teamId]);
-    await audit(req.user.id, 'deactivate_team', { teamId });
     res.json({ ok: true });
   })
 );
@@ -118,7 +109,6 @@ router.post(
       [hash, req.params.userId]
     );
     if (!rows[0]) return res.status(404).json({ error: 'USER_NOT_FOUND', message: 'User not found.' });
-    await audit(req.user.id, 'reset_password', { userId: req.params.userId, loginId: rows[0].login_id });
     res.json({ loginId: rows[0].login_id, role: rows[0].role, password });
   })
 );
@@ -130,11 +120,7 @@ router.get(
   '/decision-points',
   h(async (req, res) => {
     const { rows } = await pool.query(
-      `select t.id as team_id, t.team_code, dp.round, coalesce(sum(dp.delta),0) as total
-       from teams t
-       left join decision_points dp on dp.team_id = t.id
-       group by t.id, t.team_code, dp.round
-       order by t.team_code, dp.round`
+      `select id as team_id, team_code, decision_points from teams order by team_code`
     );
     res.json(rows);
   })
@@ -142,20 +128,17 @@ router.get(
 
 // Resource Score (30%) + Decision Score (70%) + Secret Mission bonus, per the
 // Point System doc. Rounds 4-6 marks are entered here too (as decision point
-// deltas with round=4/5/6) — this app does not run those rounds itself.
+// deltas) — this app does not run those rounds itself.
 router.get(
   '/leaderboard',
   h(async (req, res) => {
     const { rows } = await pool.query(
       `select t.id as team_id, t.team_code, t.cash_l, t.customers, t.reputation, t.innovation,
-              t.mission_completed,
-              coalesce(sum(dp.delta),0) as decision_score,
+              t.mission_completed, t.decision_points,
               mc.bonus_points
        from teams t
-       left join decision_points dp on dp.team_id = t.id
        left join identity_cards mc on mc.id = t.mission_card_id
        where t.is_active
-       group by t.id, t.team_code, t.cash_l, t.customers, t.reputation, t.innovation, t.mission_completed, mc.bonus_points
        order by t.team_code`
     );
     const scored = rows.map((r) => {
@@ -166,7 +149,7 @@ router.get(
       const reputationScore = (r.reputation / 5) * 100;
       const innovationScore = (r.innovation / 10) * 100;
       const resourceScore = 0.3 * cashScore + 0.3 * customerScore + 0.2 * reputationScore + 0.2 * innovationScore;
-      const decisionScore = Math.max(0, Math.min(100, Number(r.decision_score)));
+      const decisionScore = Math.max(0, Math.min(100, Number(r.decision_points)));
       const missionBonus = r.mission_completed ? Number(r.bonus_points || 0) : 0;
       const total = 0.3 * resourceScore + 0.7 * decisionScore + missionBonus;
       return {
@@ -190,23 +173,7 @@ router.post(
   validate(missionSchema),
   h(async (req, res) => {
     await pool.query('update teams set mission_completed = $1 where id = $2', [req.body.completed, req.body.teamId]);
-    await audit(req.user.id, 'mark_mission', req.body);
     res.json({ ok: true });
-  })
-);
-
-// ---------------------------------------------------------------------------
-// Full audit log
-// ---------------------------------------------------------------------------
-router.get(
-  '/audit-log',
-  h(async (req, res) => {
-    const { rows } = await pool.query(
-      `select al.id, al.action, al.details, al.created_at, u.role, u.login_id
-       from audit_log al left join users u on u.id = al.actor_user_id
-       order by al.created_at desc limit 500`
-    );
-    res.json(rows);
   })
 );
 

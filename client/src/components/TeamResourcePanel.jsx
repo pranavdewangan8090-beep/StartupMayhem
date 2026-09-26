@@ -1,16 +1,7 @@
 import { useEffect, useState } from 'react';
 import Modal from './Modal.jsx';
-import { api, newRequestId, ApiError } from '../lib/api.js';
+import { api, ApiError } from '../lib/api.js';
 import { useToast } from '../lib/ToastContext.jsx';
-
-const ROUNDS = [
-  { n: 1, label: 'R1 Idea Lab (/10)' },
-  { n: 2, label: 'R2 Build & Battle (/15)' },
-  { n: 3, label: 'R3 Market Mayhem (/15)' },
-  { n: 4, label: 'R4 Funding War (/15)' },
-  { n: 5, label: 'R5 Big Negotiation (/15)' },
-  { n: 6, label: 'R6 Final Pitch (/30)' },
-];
 
 /**
  * Shared by both the Admin and Super Admin panels: the team list plus the
@@ -30,11 +21,11 @@ export default function TeamResourcePanel() {
   useEffect(() => { load(); }, []);
 
   function openResourceModal(team) {
-    setForm({ dCashL: 0, dCustomers: 0, dReputation: 0, dInnovation: 0, reason: '' });
+    setForm({ dCashL: 0, dCustomers: 0, dReputation: 0, dInnovation: 0 });
     setModal({ team, mode: 'resources' });
   }
   function openPointsModal(team) {
-    setForm({ round: 1, delta: 0, note: '' });
+    setForm({ delta: 0 });
     setModal({ team, mode: 'points' });
   }
 
@@ -47,8 +38,6 @@ export default function TeamResourcePanel() {
         dCustomers: Number(form.dCustomers) || 0,
         dReputation: Number(form.dReputation) || 0,
         dInnovation: Number(form.dInnovation) || 0,
-        reason: form.reason || '(no reason given)',
-        requestId: newRequestId(),
       });
       toast('Resources updated.', 'success');
       setModal(null);
@@ -63,13 +52,7 @@ export default function TeamResourcePanel() {
     if (!delta) { toast('Delta cannot be zero.', 'error'); return; }
     setBusy(true);
     try {
-      await api.post('/admin/decision-points/adjust', {
-        teamId: modal.team.id,
-        round: Number(form.round),
-        delta,
-        note: form.note || '',
-        requestId: newRequestId(),
-      });
+      await api.post('/admin/decision-points/adjust', { teamId: modal.team.id, delta });
       toast('Decision points recorded.', 'success');
       setModal(null);
     } catch (err) {
@@ -81,7 +64,7 @@ export default function TeamResourcePanel() {
     <div>
       <div className="card-surface section">
         <h1>Teams</h1>
-        <p>Adjust resources or decision points. Every change is logged with your name, the reason and a before/after snapshot.</p>
+        <p>Adjust resources or decision points directly.</p>
       </div>
 
       {teams.map((t) => (
@@ -116,10 +99,6 @@ export default function TeamResourcePanel() {
               <input type="number" value={form[key]} onChange={(e) => setForm({ ...form, [key]: e.target.value })} />
             </div>
           ))}
-          <div className="field">
-            <label>Reason (required — shown in the audit log)</label>
-            <textarea rows={2} value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} />
-          </div>
           <button className="btn btn-primary btn-block" disabled={busy} onClick={submitResources}>Apply</button>
         </Modal>
       )}
@@ -129,18 +108,8 @@ export default function TeamResourcePanel() {
           <h2>Decision Points — {modal.team.team_code}</h2>
           <p>Players never see this. Only the Super Admin can view every team's points.</p>
           <div className="field">
-            <label>Round</label>
-            <select value={form.round} onChange={(e) => setForm({ ...form, round: e.target.value })}>
-              {ROUNDS.map((r) => <option key={r.n} value={r.n}>{r.label}</option>)}
-            </select>
-          </div>
-          <div className="field">
             <label>Δ Points</label>
             <input type="number" value={form.delta} onChange={(e) => setForm({ ...form, delta: e.target.value })} />
-          </div>
-          <div className="field">
-            <label>Note</label>
-            <textarea rows={2} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
           </div>
           <button className="btn btn-primary btn-block" disabled={busy} onClick={submitPoints}>Save</button>
         </Modal>

@@ -11,12 +11,6 @@ export default function ScoresTab() {
     api.get('/super-admin/decision-points').then(setPoints);
   }, []);
 
-  const byTeam = {};
-  for (const p of points) {
-    byTeam[p.team_code] = byTeam[p.team_code] || {};
-    if (p.round) byTeam[p.team_code][p.round] = Number(p.total);
-  }
-
   return (
     <div>
       <div className="tabbar" style={{ position: 'static' }}>
@@ -46,15 +40,15 @@ export default function ScoresTab() {
 
       {view === 'points' && (
         <div className="card-surface section" style={{ marginTop: 16 }}>
-          <h2>Decision Points by Round</h2>
+          <h2>Decision Points</h2>
           <div className="table-scroll">
             <table className="data-table">
-              <thead><tr><th>Team</th>{[1,2,3,4,5,6].map((r) => <th key={r}>R{r}</th>)}</tr></thead>
+              <thead><tr><th>Team</th><th>Total</th></tr></thead>
               <tbody>
-                {Object.entries(byTeam).map(([code, rounds]) => (
-                  <tr key={code}>
-                    <td>{code}</td>
-                    {[1,2,3,4,5,6].map((r) => <td key={r}>{rounds[r] ?? 0}</td>)}
+                {points.map((p) => (
+                  <tr key={p.team_id}>
+                    <td>{p.team_code}</td>
+                    <td>{p.decision_points}</td>
                   </tr>
                 ))}
               </tbody>

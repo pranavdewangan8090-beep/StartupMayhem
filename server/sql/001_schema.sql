@@ -10,6 +10,9 @@
 -- The Node server is the ONLY client of this database. RLS is enabled on every
 -- table with no policies, and anon/authenticated roles have no grants, so the
 -- public Supabase REST API cannot read or write anything.
+--
+-- Kept deliberately simple: no separate audit/log tables. Every action updates
+-- the relevant row directly (teams, cards, mayhems) with no history trail.
 
 create extension if not exists pgcrypto;
 
@@ -47,6 +50,24 @@ create table action_cards (
 );
 
 -- ---------------------------------------------------------------------------
+-- Market Mayhem (single table: catalog + which action cards protect against it
+-- + whether/when it has been triggered — no separate protections or event log)
+-- ---------------------------------------------------------------------------
+create table mayhems (
+  id                       serial primary key,
+  title                    text not null unique,
+  description              text not null,
+  effect_text              text not null,
+  tags                     text[] not null default '{}' check (tags <@ array['finance','social','urban','logistics']::text[]),
+  -- action cards that shield a holding team from this mayhem (checked manually by admins)
+  protected_action_card_ids int[] not null default '{}',
+  is_active                boolean not null default true,
+  is_triggered             boolean not null default false,
+  triggered_at             timestamptz,
+  triggered_by             uuid
+);
+
+-- ---------------------------------------------------------------------------
 -- Teams and users
 -- ---------------------------------------------------------------------------
 create table teams (
@@ -57,6 +78,8 @@ create table teams (
   reputation         smallint not null default 0 check (reputation between 0 and 5),
   innovation         smallint not null default 0 check (innovation between 0 and 10),
   replacements_used  smallint not null default 0 check (replacements_used between 0 and 3),
+  -- running total of decision points across all rounds (hidden from players)
+  decision_points    int not null default 0,
   market_card_id     int not null references identity_cards(id),
   customer_card_id   int not null references identity_cards(id),
   problem_card_id    int not null references identity_cards(id),
@@ -83,6 +106,8 @@ create table users (
 );
 create unique index users_one_login_per_team on users(team_id) where team_id is not null;
 
+alter table mayhems add constraint mayhems_triggered_by_fk foreign key (triggered_by) references users(id) on delete set null;
+
 -- ---------------------------------------------------------------------------
 -- Global game switches (single row)
 -- ---------------------------------------------------------------------------
@@ -92,23 +117,10 @@ create table game_state (
   r2_selection_open       boolean not null default false,
   marketplace_open        boolean not null default false,
   card_play_open          boolean not null default true,
-  current_mayhem_event_id int,
+  current_mayhem_id       int references mayhems(id),
   updated_at              timestamptz not null default now()
 );
 insert into game_state (id) values (1);
-
--- ---------------------------------------------------------------------------
--- Round 1: identity card replacements (max 3 per team, enforced on teams row)
--- ---------------------------------------------------------------------------
-create table card_replacements (
-  id           bigserial primary key,
-  team_id      int not null references teams(id) on delete cascade,
-  category     text not null,
-  old_card_id  int not null references identity_cards(id),
-  new_card_id  int not null references identity_cards(id),
-  request_id   uuid not null unique,
-  created_at   timestamptz not null default now()
-);
 
 -- ---------------------------------------------------------------------------
 -- Action cards held by teams
@@ -128,7 +140,8 @@ create index team_action_cards_team on team_action_cards(team_id);
 -- R2: a team may request each action card at most once
 create unique index team_action_cards_r2_unique on team_action_cards(team_id, action_card_id) where source = 'r2';
 
--- Every play of an action card (attack log, deal requests, self-help history)
+-- Every play of an action card (attack, deal, self-help) — tracks in-flight
+-- deal state (pending/applied/rejected/cancelled), not a historical log.
 create table card_plays (
   id                   bigserial primary key,
   team_action_card_id  uuid not null unique references team_action_cards(id) on delete cascade,
@@ -136,11 +149,8 @@ create table card_plays (
   team_id              int not null references teams(id) on delete cascade,
   other_team_id        int references teams(id) on delete cascade,   -- attack target or deal partner
   status               text not null check (status in ('applied','pending','rejected','cancelled')),
-  self_applied         jsonb,   -- deltas actually applied after caps
-  other_applied        jsonb,
   request_id           uuid not null unique,
-  created_at           timestamptz not null default now(),
-  resolved_at          timestamptz
+  created_at           timestamptz not null default now()
 );
 create index card_plays_other on card_plays(other_team_id);
 
@@ -171,66 +181,6 @@ create table trade_offers (
 create unique index trade_offers_one_pending on trade_offers(listing_id, buyer_team_id) where status = 'pending';
 create index trade_offers_offered_card on trade_offers(offered_card_id) where status = 'pending';
 
--- ---------------------------------------------------------------------------
--- Market Mayhem
--- ---------------------------------------------------------------------------
-create table mayhems (
-  id           serial primary key,
-  title        text not null unique,
-  description  text not null,
-  effect_text  text not null,
-  tags         text[] not null default '{}' check (tags <@ array['finance','social','urban','logistics']::text[]),
-  is_active    boolean not null default true
-);
-
--- special action cards that protect the holder from a given mayhem (checked manually by admins)
-create table mayhem_protections (
-  mayhem_id       int not null references mayhems(id) on delete cascade,
-  action_card_id  int not null references action_cards(id) on delete cascade,
-  primary key (mayhem_id, action_card_id)
-);
-
-create table mayhem_events (
-  id            serial primary key,
-  mayhem_id     int not null references mayhems(id),
-  triggered_by  uuid references users(id) on delete set null,
-  triggered_at  timestamptz not null default now()
-);
-alter table game_state
-  add constraint game_state_mayhem_fk foreign key (current_mayhem_event_id) references mayhem_events(id);
-
--- ---------------------------------------------------------------------------
--- Scoring and audit
--- ---------------------------------------------------------------------------
--- Every resource change (admin, card, replacement) with before/after snapshot
-create table resource_adjustments (
-  id             bigserial primary key,
-  team_id        int not null references teams(id) on delete cascade,
-  actor_user_id  uuid references users(id) on delete set null,
-  source         text not null check (source in ('admin','card','replacement')),
-  delta          jsonb not null,   -- requested change
-  applied        jsonb not null,   -- change after caps
-  before         jsonb not null,
-  after          jsonb not null,
-  reason         text not null default '',
-  request_id     uuid unique,
-  created_at     timestamptz not null default now()
-);
-create index resource_adjustments_team on resource_adjustments(team_id, created_at desc);
-
--- Decision points: append-only deltas per round. Hidden from players.
-create table decision_points (
-  id             bigserial primary key,
-  team_id        int not null references teams(id) on delete cascade,
-  round          smallint not null check (round between 1 and 6),
-  delta          smallint not null check (delta between -30 and 30 and delta <> 0),
-  actor_user_id  uuid references users(id) on delete set null,
-  note           text not null default '',
-  request_id     uuid not null unique,
-  created_at     timestamptz not null default now()
-);
-create index decision_points_team on decision_points(team_id);
-
 create table notifications (
   id          bigserial primary key,
   team_id     int not null references teams(id) on delete cascade,
@@ -241,15 +191,6 @@ create table notifications (
   created_at  timestamptz not null default now()
 );
 create index notifications_team on notifications(team_id, created_at desc);
-
--- Super admin / structural actions (toggles, mayhem, team management)
-create table audit_log (
-  id             bigserial primary key,
-  actor_user_id  uuid references users(id) on delete set null,
-  action         text not null,
-  details        jsonb not null default '{}'::jsonb,
-  created_at     timestamptz not null default now()
-);
 
 -- ---------------------------------------------------------------------------
 -- Lock down the public Supabase API: only the server (postgres role) gets in.

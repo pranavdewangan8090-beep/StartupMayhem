@@ -1,9 +1,7 @@
 import { Router } from 'express';
-import { z } from 'zod';
 import { pool } from '../db/pool.js';
 import { requireAuth } from '../middleware/auth.js';
 import { requireRole } from '../middleware/roles.js';
-import { validate } from '../middleware/validate.js';
 import { actionLimiter } from '../middleware/rateLimit.js';
 import { h } from '../lib/errors.js';
 
@@ -16,10 +14,9 @@ router.get(
   '/current',
   h(async (req, res) => {
     const { rows } = await pool.query(
-      `select me.id as event_id, me.triggered_at, m.title, m.description, m.effect_text, m.tags
+      `select m.id as mayhem_id, m.triggered_at, m.title, m.description, m.effect_text, m.tags
        from game_state gs
-       join mayhem_events me on me.id = gs.current_mayhem_event_id
-       join mayhems m on m.id = me.mayhem_id
+       join mayhems m on m.id = gs.current_mayhem_id
        where gs.id = 1`
     );
     res.json(rows[0] || null);
@@ -34,9 +31,8 @@ router.get(
   requireRole('admin', 'super_admin'),
   h(async (req, res) => {
     const { rows: mrows } = await pool.query(
-      `select m.id as mayhem_id, m.tags from game_state gs
-       join mayhem_events me on me.id = gs.current_mayhem_event_id
-       join mayhems m on m.id = me.mayhem_id
+      `select m.id as mayhem_id, m.tags, m.protected_action_card_ids from game_state gs
+       join mayhems m on m.id = gs.current_mayhem_id
        where gs.id = 1`
     );
     const mayhem = mrows[0];
@@ -44,12 +40,11 @@ router.get(
 
     const { rows: specialCardHolders } = await pool.query(
       `select t.id as team_id, t.team_code, ac.name as card_name
-       from mayhem_protections mp
-       join action_cards ac on ac.id = mp.action_card_id
+       from action_cards ac
        join team_action_cards tac on tac.action_card_id = ac.id and tac.status = 'held'
        join teams t on t.id = tac.team_id
-       where mp.mayhem_id = $1`,
-      [mayhem.mayhem_id]
+       where ac.id = any($1::int[])`,
+      [mayhem.protected_action_card_ids]
     );
 
     // Teams whose identity cards react to one of this mayhem's tags (informational —
@@ -69,14 +64,12 @@ router.get(
   })
 );
 
-const triggerSchema = z.object({ requestId: z.string().uuid() });
 router.post(
   '/trigger',
   actionLimiter,
   requireRole('super_admin'),
-  validate(triggerSchema),
   h(async (req, res) => {
-    const { rows } = await pool.query('select * from fn_trigger_mayhem($1, $2)', [req.user.id, req.body.requestId]);
+    const { rows } = await pool.query('select * from fn_trigger_mayhem($1)', [req.user.id]);
     res.json(rows[0]);
   })
 );

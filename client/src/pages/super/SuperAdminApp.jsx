@@ -4,14 +4,12 @@ import TeamResourcePanel from '../../components/TeamResourcePanel.jsx';
 import ControlRoomTab from './ControlRoomTab.jsx';
 import ScoresTab from './ScoresTab.jsx';
 import TeamManagementTab from './TeamManagementTab.jsx';
-import AuditLogTab from './AuditLogTab.jsx';
 
 const TABS = [
   { key: 'control', label: 'Control Room' },
   { key: 'teams', label: 'Teams' },
   { key: 'scores', label: 'Scores' },
   { key: 'manage', label: 'Manage Teams' },
-  { key: 'audit', label: 'Audit Log' },
 ];
 
 export default function SuperAdminApp() {
@@ -30,7 +28,6 @@ export default function SuperAdminApp() {
         {tab === 'teams' && <TeamResourcePanel />}
         {tab === 'scores' && <ScoresTab />}
         {tab === 'manage' && <TeamManagementTab />}
-        {tab === 'audit' && <AuditLogTab />}
       </div>
     </div>
   );

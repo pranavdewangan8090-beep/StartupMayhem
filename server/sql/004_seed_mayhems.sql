@@ -3,9 +3,9 @@
 -- (send it the same way you sent the cards and I'll regenerate this file).
 --
 -- Each mayhem must carry at least one tag from: finance, social, urban, logistics
--- (per the Starting Cards doc, Section "Event tags"). mayhem_protections lists which
--- Special/AI action cards shield a holding team from THIS mayhem — admins see this
--- list on the trigger screen and decide manually whether to apply it.
+-- (per the Starting Cards doc, Section "Event tags"). protected_action_card_ids
+-- lists which Special/AI action cards shield a holding team from THIS mayhem —
+-- admins see this list on the trigger screen and decide manually whether to apply it.
 
 insert into mayhems (title, description, effect_text, tags) values
   ('Payment Gateway Outage',
@@ -26,18 +26,18 @@ insert into mayhems (title, description, effect_text, tags) values
    '{logistics}');
 
 -- Example protections: adjust these once the real mayhem-to-card mapping is confirmed.
-insert into mayhem_protections (mayhem_id, action_card_id)
-select m.id, a.id from mayhems m, action_cards a
-where m.title = 'Payment Gateway Outage' and a.name = 'AI Cybersecurity Sentinel';
+update mayhems set protected_action_card_ids = array(
+  select a.id from action_cards a where a.name = 'AI Cybersecurity Sentinel'
+) where title = 'Payment Gateway Outage';
 
-insert into mayhem_protections (mayhem_id, action_card_id)
-select m.id, a.id from mayhems m, action_cards a
-where m.title = 'Viral Backlash on Social Media' and a.name = 'Automated AI Support Agent';
+update mayhems set protected_action_card_ids = array(
+  select a.id from action_cards a where a.name = 'Automated AI Support Agent'
+) where title = 'Viral Backlash on Social Media';
 
-insert into mayhem_protections (mayhem_id, action_card_id)
-select m.id, a.id from mayhems m, action_cards a
-where m.title = 'City Traffic Gridlock' and a.name = 'Autonomous Logistics Optimizer';
+update mayhems set protected_action_card_ids = array(
+  select a.id from action_cards a where a.name = 'Autonomous Logistics Optimizer'
+) where title = 'City Traffic Gridlock';
 
-insert into mayhem_protections (mayhem_id, action_card_id)
-select m.id, a.id from mayhems m, action_cards a
-where m.title = 'Vendor Supply Shortage' and a.name = 'AI Market Intelligence Agent';
+update mayhems set protected_action_card_ids = array(
+  select a.id from action_cards a where a.name = 'AI Market Intelligence Agent'
+) where title = 'Vendor Supply Shortage';

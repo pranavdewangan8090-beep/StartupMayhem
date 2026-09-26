@@ -105,7 +105,7 @@ router.get(
               (select count(*) from trade_offers to2 join market_listings ml on ml.id = to2.listing_id
                  where ml.seller_team_id = $1 and to2.status = 'pending') as pending_trade_offers_in,
               gs.r1_replace_open, gs.r2_selection_open, gs.marketplace_open, gs.card_play_open,
-              gs.current_mayhem_event_id
+              gs.current_mayhem_id
        from game_state gs where gs.id = 1`,
       [req.user.teamId]
     );

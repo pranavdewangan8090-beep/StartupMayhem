@@ -17,7 +17,7 @@ export default function DashboardTab({ gameState }) {
     setNotifications(n);
   }
 
-  useEffect(() => { load(); }, [gameState?.current_mayhem_event_id, gameState?.unread_notifications]);
+  useEffect(() => { load(); }, [gameState?.current_mayhem_id, gameState?.unread_notifications]);
 
   useEffect(() => {
     if (notifications.some((n) => !n.read_at)) {
