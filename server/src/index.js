@@ -16,10 +16,16 @@ import superAdminRoutes from './routes/superAdmin.js';
 const app = express();
 
 app.set('trust proxy', 1); // needed for correct rate-limit / secure-cookie behavior behind a host's proxy
-app.use(helmet());
+// HSTS tells the browser to force HTTPS for this origin for months — correct
+// in production, but sent over plain HTTP in local dev it can make a browser
+// silently try to upgrade the next request to https://localhost, which
+// nothing here serves, hanging every subsequent fetch from that browser.
+app.use(helmet({ hsts: config.nodeEnv === 'production' }));
 app.use(
   cors({
-    origin: config.corsOrigins,
+    // `true` reflects whatever Origin the request sent (works with
+    // credentials, unlike the literal string '*') — used when CORS_ORIGINS=*
+    origin: config.corsAllowAll ? true : config.corsOrigins,
     credentials: true,
   })
 );

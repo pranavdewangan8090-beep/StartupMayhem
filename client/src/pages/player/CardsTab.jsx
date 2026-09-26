@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api, newRequestId, ApiError } from '../../lib/api.js';
 import { useToast } from '../../lib/ToastContext.jsx';
-import { areAllCardsRevealed } from '../../lib/revealedCards.js';
 import FlipCard from '../../components/FlipCard.jsx';
 import Modal from '../../components/Modal.jsx';
 
@@ -51,19 +50,14 @@ export default function CardsTab({ gameState, revealed, onReveal }) {
 
   const remaining = 3 - cards.replacements_used;
   const replaceOpen = gameState?.r1_replace_open;
-  const allRevealed = areAllCardsRevealed(revealed);
 
   return (
     <div>
-      <div className="section card-surface" style={{ marginBottom: 16 }}>
-        <h2>Your 5 Starting Cards</h2>
-        {!allRevealed ? (
-          <p>Tap each card below to reveal it. You have <b>{remaining}</b> card replacement{remaining === 1 ? '' : 's'} left.</p>
-        ) : (
-          <p>Tap a card to see its full details. You have <b>{remaining}</b> card replacement{remaining === 1 ? '' : 's'} left.</p>
-        )}
-        {!replaceOpen && <p className="warning-text">Replacements are currently closed by the Super Admin.</p>}
-      </div>
+      {!replaceOpen && (
+        <div className="section card-surface" style={{ marginBottom: 16 }}>
+          <p className="warning-text">Replacements are currently closed by the Super Admin.</p>
+        </div>
+      )}
 
       <div className="card-grid">
         {CATS.map((c) => {

@@ -96,6 +96,7 @@ create or replace function fn_r2_request_card(
 language plpgsql as $$
 declare
   v_count int;
+  v_category text;
   v_row team_action_cards%rowtype;
 begin
   if exists (select 1 from team_action_cards where request_id = p_request_id) then
@@ -117,6 +118,17 @@ begin
   if exists (select 1 from team_action_cards
              where team_id = p_team_id and action_card_id = p_action_card_id and source = 'r2') then
     raise exception 'ALREADY_HAVE_CARD';
+  end if;
+
+  -- one card per category: self_help, attack, deal, special (4 categories,
+  -- 4 max cards — a team's R2 hand always ends up with exactly one of each)
+  select category into v_category from action_cards where id = p_action_card_id;
+  if exists (
+    select 1 from team_action_cards tac
+    join action_cards ac on ac.id = tac.action_card_id
+    where tac.team_id = p_team_id and tac.source = 'r2' and ac.category = v_category
+  ) then
+    raise exception 'CATEGORY_ALREADY_TAKEN';
   end if;
 
   insert into team_action_cards (team_id, action_card_id, status, source, request_id)

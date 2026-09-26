@@ -102,7 +102,9 @@ export default function ActionCardsTab({ gameState, onChanged }) {
   }
 
   const heldIds = new Set(hand.map((c) => c.action_card_id));
-  const canRequestMore = hand.filter((c) => c.source === 'r2').length < 4;
+  const r2Hand = hand.filter((c) => c.source === 'r2');
+  const heldCategories = new Set(r2Hand.map((c) => c.category));
+  const canRequestMore = r2Hand.length < 4;
 
   return (
     <div>
@@ -156,22 +158,23 @@ export default function ActionCardsTab({ gameState, onChanged }) {
       {gameState?.r2_selection_open ? (
         <div className="card-surface section">
           <h2>Action Card Catalog</h2>
-          <p>Pick up to 4 cards, one request at a time.</p>
-          <div className="action-grid">
-            {catalog.map((c) => (
-              <div key={c.id} className={`action-card-tile cat-${c.category}`} style={{ opacity: heldIds.has(c.id) ? 0.5 : 1 }}>
-                <span className={`pill cat-${c.category}`}>{CAT_LABEL[c.category]}</span>
-                <div className="name" style={{ marginTop: 6 }}>{c.name}</div>
-                <div className="effect">{c.effect_text}</div>
-                <button
-                  className="btn btn-primary btn-sm"
-                  disabled={busy || !canRequestMore || heldIds.has(c.id)}
-                  onClick={() => request(c.id)}
-                >
-                  {heldIds.has(c.id) ? 'Already requested' : 'Make Request'}
-                </button>
-              </div>
-            ))}
+          <p>Pick 4 cards total — one from each category (Self Help, Attack, Deal, Special/AI).</p>
+          <div className="catalog-grid">
+            {catalog.map((c) => {
+              const alreadyHaveThis = heldIds.has(c.id);
+              const categoryTaken = heldCategories.has(c.category) && !alreadyHaveThis;
+              const disabled = busy || !canRequestMore || alreadyHaveThis || categoryTaken;
+              return (
+                <div key={c.id} className="catalog-tile" style={{ opacity: alreadyHaveThis || categoryTaken ? 0.5 : 1 }}>
+                  <span className={`pill cat-${c.category}`}>{CAT_LABEL[c.category]}</span>
+                  <div className="name">{c.name}</div>
+                  <div className="effect">{c.effect_text}</div>
+                  <button className="btn btn-primary btn-sm" disabled={disabled} onClick={() => request(c.id)}>
+                    {alreadyHaveThis ? 'Already requested' : categoryTaken ? 'Category already picked' : 'Make Request'}
+                  </button>
+                </div>
+              );
+            })}
           </div>
         </div>
       ) : (

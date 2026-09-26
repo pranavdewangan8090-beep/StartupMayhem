@@ -163,19 +163,23 @@ p { color: var(--text-dim); line-height: 1.45; margin: 4px 0; }
   gap: 6px;
   padding: 12px 18px;
   border-radius: 12px;
-  border: 1px solid transparent;
+  border: 1px solid var(--border);
   font-weight: 600;
   font-size: 0.9rem;
   cursor: pointer;
-  transition: transform 0.08s ease, opacity 0.15s ease, border-color 0.15s ease;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition: transform 0.08s ease, opacity 0.15s ease, border-color 0.15s ease, background 0.15s ease;
 }
 .btn:active { transform: scale(0.97); }
 .btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .btn-primary {
-  background: linear-gradient(135deg, var(--accent), var(--accent-2));
-  color: #14121a;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 55%, transparent), color-mix(in srgb, var(--accent-2) 55%, transparent));
+  border-color: color-mix(in srgb, var(--accent-soft) 45%, transparent);
+  color: var(--text);
   font-weight: 700;
 }
+.btn-primary:hover { border-color: var(--accent-soft); }
 .btn-danger { background: rgba(248, 113, 113, 0.16); color: var(--danger); border-color: rgba(248, 113, 113, 0.35); }
 .btn-success { background: rgba(74, 222, 128, 0.16); color: var(--success); border-color: rgba(74, 222, 128, 0.35); }
 .btn-ghost { background: rgba(255, 255, 255, 0.04); color: var(--text); border-color: var(--border); }
@@ -406,25 +410,17 @@ p { color: var(--text-dim); line-height: 1.45; margin: 4px 0; }
 
 /* action card list tiles */
 .action-card-tile {
-  border-radius: 14px;
+  border-radius: 16px;
   border: 1px solid var(--border);
-  padding: 14px;
+  padding: 16px;
   background: var(--bg-card);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   position: relative;
   overflow: hidden;
+  transition: border-color 0.15s ease, transform 0.15s ease;
 }
-.action-card-tile::before {
-  content: '';
-  position: absolute;
-  left: 0; top: 0; bottom: 0;
-  width: 3px;
-}
-.action-card-tile.cat-self_help::before { background: var(--cat-self-help); }
-.action-card-tile.cat-attack::before { background: var(--cat-attack); }
-.action-card-tile.cat-deal::before { background: var(--cat-deal); }
-.action-card-tile.cat-special::before { background: var(--cat-special); }
+.action-card-tile:hover { border-color: var(--border-strong); }
 .action-card-tile.listed { filter: grayscale(0.6) brightness(0.6); }
 .action-card-tile .name { font-weight: 700; margin-bottom: 2px; color: var(--text); }
 .action-card-tile .effect { font-size: 0.8rem; color: var(--text-dim); margin-bottom: 10px; }
@@ -665,15 +661,41 @@ table.data-table th { color: var(--text-dim); font-weight: 600; font-size: 0.72r
 @media (min-width: 520px) {
   .action-grid { grid-template-columns: repeat(2, 1fr); }
 }
-.action-card-tile {
-  transition: transform 0.15s ease, border-color 0.15s ease;
-  padding: 16px 16px 16px 18px;
-}
-.action-card-tile::before { width: 4px; border-radius: 4px 0 0 4px; }
 .action-card-tile { text-align: center; }
 .action-card-tile .name, .action-card-tile .effect { text-align: left; }
 .action-card-tile .name { font-size: 0.95rem; }
 .action-card-tile > .btn { margin-top: 10px; }
+
+/* Catalog: a dense, scannable list (60 cards) — no colored accent bar, just
+   the category pill for color, laid out as slim rows instead of square tiles. */
+.catalog-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+}
+.catalog-tile {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 10px 16px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  padding: 12px 14px;
+  transition: border-color 0.15s ease;
+}
+.catalog-tile:hover { border-color: var(--border-strong); }
+.catalog-tile .name { grid-column: 1; font-weight: 700; color: var(--text); font-size: 0.9rem; margin-top: 4px; }
+.catalog-tile .effect { grid-column: 1; font-size: 0.76rem; color: var(--text-dim); margin-top: 2px; }
+.catalog-tile .pill { grid-column: 1; justify-self: start; }
+.catalog-tile .btn { grid-column: 2; grid-row: 1 / span 3; align-self: center; white-space: nowrap; }
+@media (max-width: 480px) {
+  .catalog-tile { grid-template-columns: 1fr; }
+  .catalog-tile .btn { grid-column: 1; grid-row: auto; width: 100%; margin-top: 6px; }
+}
 
 @media (min-width: 900px) {
   .app-shell .page { max-width: 900px; }

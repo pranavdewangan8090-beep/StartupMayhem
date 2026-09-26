@@ -11,6 +11,7 @@ const CODE_MAP = {
   R2_CLOSED: [403, 'Action card selection is closed.'],
   R2_LIMIT_REACHED: [403, 'You already have 4 action cards.'],
   ALREADY_HAVE_CARD: [409, 'You already requested this card.'],
+  CATEGORY_ALREADY_TAKEN: [409, 'You already have a card from this category.'],
   CARD_PLAY_CLOSED: [403, 'Playing action cards is closed right now.'],
   CARD_NOT_FOUND: [404, 'Card not found.'],
   CARD_NOT_AVAILABLE: [409, 'That card cannot be used right now.'],
