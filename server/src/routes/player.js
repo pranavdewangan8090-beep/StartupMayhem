@@ -18,11 +18,12 @@ router.get(
   h(async (req, res) => {
     const { rows } = await pool.query(
       `select
-         mk.id as market_id, mk.title as market_title, mk.tagline as market_tagline, mk.description as market_desc,
-         cu.id as customer_id, cu.title as customer_title, cu.tagline as customer_tagline, cu.description as customer_desc,
-         pr.id as problem_id, pr.title as problem_title, pr.tagline as problem_tagline, pr.description as problem_desc,
-         ms.id as mission_id, ms.title as mission_title, ms.tagline as mission_tagline, ms.description as mission_desc, ms.bonus_points,
-         rc.id as resources_id, rc.title as resources_title, rc.tagline as resources_tagline, rc.description as resources_desc,
+         mk.id as market_id, mk.title as market_title, mk.tagline as market_tagline, mk.description as market_desc, mk.event_tags as market_tags,
+         cu.id as customer_id, cu.title as customer_title, cu.tagline as customer_tagline, cu.description as customer_desc, cu.event_tags as customer_tags,
+         pr.id as problem_id, pr.title as problem_title, pr.tagline as problem_tagline, pr.description as problem_desc, pr.event_tags as problem_tags,
+         ms.id as mission_id, ms.title as mission_title, ms.tagline as mission_tagline, ms.description as mission_desc, ms.event_tags as mission_tags, ms.bonus_points,
+         rc.id as resources_id, rc.title as resources_title, rc.tagline as resources_tagline, rc.description as resources_desc, rc.event_tags as resources_tags,
+         rc.start_cash_l, rc.start_customers, rc.start_reputation, rc.start_innovation,
          t.replacements_used, t.cash_l, t.customers, t.reputation, t.innovation
        from teams t
        join identity_cards mk on mk.id = t.market_card_id
@@ -69,25 +70,6 @@ router.get(
   })
 );
 
-router.get(
-  '/notifications',
-  h(async (req, res) => {
-    const { rows } = await pool.query(
-      'select id, type, title, body, read_at, created_at from notifications where team_id = $1 order by created_at desc limit 100',
-      [req.user.teamId]
-    );
-    res.json(rows);
-  })
-);
-
-router.post(
-  '/notifications/read',
-  h(async (req, res) => {
-    await pool.query('update notifications set read_at = now() where team_id = $1 and read_at is null', [req.user.teamId]);
-    res.json({ ok: true });
-  })
-);
-
 // ---------------------------------------------------------------------------
 // Live-updates polling: one cheap endpoint every phone hits every few seconds.
 // Returns 304-style "no change" when the caller's version is current, so most
@@ -99,18 +81,16 @@ router.get(
     const clientVersion = req.query.v ? parseInt(req.query.v, 10) : 0;
     const { rows } = await pool.query(
       `select extract(epoch from gs.updated_at)::bigint as game_version,
-              (select count(*) from notifications where team_id = $1 and read_at is null) as unread_notifications,
               (select count(*) from team_action_cards where team_id = $1 and source='r2') as action_card_count,
               (select count(*) from card_plays where other_team_id = $1 and status = 'pending') as pending_deal_offers_in,
               (select count(*) from trade_offers to2 join market_listings ml on ml.id = to2.listing_id
                  where ml.seller_team_id = $1 and to2.status = 'pending') as pending_trade_offers_in,
-              gs.r1_replace_open, gs.r2_selection_open, gs.marketplace_open, gs.card_play_open,
-              gs.current_mayhem_id
+              gs.r1_replace_open, gs.r2_selection_open, gs.marketplace_open, gs.card_play_open
        from game_state gs where gs.id = 1`,
       [req.user.teamId]
     );
     const row = rows[0];
-    const version = Number(row.game_version) + Number(row.unread_notifications) * 1_000_000_000
+    const version = Number(row.game_version)
       + Number(row.action_card_count) * 10_000_000_000 + Number(row.pending_deal_offers_in) * 100_000_000_000
       + Number(row.pending_trade_offers_in) * 1_000_000_000_000;
     if (version === clientVersion) {

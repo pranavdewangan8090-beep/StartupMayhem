@@ -35,7 +35,7 @@ export default function Login() {
   return (
     <div className="login-wrap">
       <div className="login-card">
-        <div className="login-title">🚀 Startup Mayhem</div>
+        <div className="login-title">Startup Mayhem</div>
         <p className="login-sub">Log in to your team, admin or super admin account.</p>
 
         <div className="card-surface">

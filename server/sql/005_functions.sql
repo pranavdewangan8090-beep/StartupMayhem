@@ -256,13 +256,6 @@ begin
   insert into card_plays (team_action_card_id, action_card_id, team_id, other_team_id, status, request_id)
   values (p_team_action_card_id, v_card.id, p_team_id, p_target_team_id, 'applied', p_request_id);
 
-  -- the attacked team must be told what happened and who did it
-  insert into notifications (team_id, type, title, body)
-  values (p_target_team_id, 'attacked',
-          'You were attacked: ' || v_card.name,
-          'Team ' || (select team_code from teams where id = p_team_id) ||
-          ' played "' || v_card.name || '" on you. ' || v_card.effect_text);
-
   return jsonb_build_object('self_after', v_self_after, 'target_after', v_target_after);
 end;
 $$;
@@ -303,12 +296,6 @@ begin
   insert into card_plays (team_action_card_id, action_card_id, team_id, other_team_id, status, request_id)
   values (p_team_action_card_id, v_card.id, p_team_id, p_partner_team_id, 'pending', p_request_id)
   returning * into v_row;
-
-  insert into notifications (team_id, type, title, body)
-  values (p_partner_team_id, 'deal_offer',
-          'Deal offer: ' || v_card.name,
-          'Team ' || (select team_code from teams where id = p_team_id) ||
-          ' proposes "' || v_card.name || '". ' || v_card.effect_text);
 
   return v_row;
 end;
@@ -458,9 +445,6 @@ begin
   values (p_listing_id, p_buyer_team_id, p_offered_team_action_card_id, p_request_id)
   returning * into v_row;
 
-  insert into notifications (team_id, type, title, body)
-  values (v_listing.seller_team_id, 'trade_offer', 'New trade offer on your listing', '');
-
   return v_row;
 end;
 $$;
@@ -505,9 +489,6 @@ begin
     update team_action_cards set status = 'held'
     where id = (select offered_card_id from trade_offers where id = v_other_offer_id);
   end loop;
-
-  insert into notifications (team_id, type, title, body)
-  values (v_offer.buyer_team_id, 'trade_accepted', 'Your trade offer was accepted', '');
 
   return jsonb_build_object('accepted', true);
 end;

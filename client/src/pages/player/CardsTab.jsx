@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api, newRequestId, ApiError } from '../../lib/api.js';
 import { useToast } from '../../lib/ToastContext.jsx';
+import { areAllCardsRevealed } from '../../lib/revealedCards.js';
 import FlipCard from '../../components/FlipCard.jsx';
 import Modal from '../../components/Modal.jsx';
 
@@ -12,7 +13,17 @@ const CATS = [
   { key: 'resources', label: 'Starting Resources' },
 ];
 
-export default function CardsTab({ gameState }) {
+function cardStats(key, cards) {
+  if (key !== 'resources') return null;
+  return [
+    { label: 'Cash', value: `₹${cards.start_cash_l / 10}M` },
+    { label: 'Customers', value: `${(cards.start_customers / 1000).toFixed(0)}k` },
+    { label: 'Reputation', value: `${cards.start_reputation}/5` },
+    { label: 'Innovation', value: `${cards.start_innovation}/10` },
+  ];
+}
+
+export default function CardsTab({ gameState, revealed, onReveal }) {
   const [cards, setCards] = useState(null);
   const [enlarged, setEnlarged] = useState(null); // category key
   const [busyCat, setBusyCat] = useState(null);
@@ -40,26 +51,39 @@ export default function CardsTab({ gameState }) {
 
   const remaining = 3 - cards.replacements_used;
   const replaceOpen = gameState?.r1_replace_open;
+  const allRevealed = areAllCardsRevealed(revealed);
 
   return (
     <div>
       <div className="section card-surface" style={{ marginBottom: 16 }}>
         <h2>Your 5 Starting Cards</h2>
-        <p>Tap a card to flip it, tap again to enlarge. You have <b>{remaining}</b> card replacement{remaining === 1 ? '' : 's'} left.</p>
-        {!replaceOpen && <p style={{ color: 'var(--warning)' }}>Replacements are currently closed by the Super Admin.</p>}
+        {!allRevealed ? (
+          <p>Tap each card below to reveal it. You have <b>{remaining}</b> card replacement{remaining === 1 ? '' : 's'} left.</p>
+        ) : (
+          <p>Tap a card to see its full details. You have <b>{remaining}</b> card replacement{remaining === 1 ? '' : 's'} left.</p>
+        )}
+        {!replaceOpen && <p className="warning-text">Replacements are currently closed by the Super Admin.</p>}
       </div>
 
       <div className="card-grid">
         {CATS.map((c) => {
-          const id = cards[`${c.key}_id`];
           const title = cards[`${c.key}_title`];
           const tagline = cards[`${c.key}_tagline`];
+          const description = cards[`${c.key}_desc`];
+          const tags = cards[`${c.key}_tags`] || [];
+          const stats = cardStats(c.key, cards);
+          const isRevealed = revealed?.has(c.key);
           return (
             <FlipCard
               key={c.key}
               category={c.key}
               title={title}
               tagline={tagline}
+              description={description}
+              tags={c.key === 'mission' && cards.bonus_points ? [...tags, `+${cards.bonus_points} pts`] : tags}
+              stats={stats}
+              revealed={isRevealed}
+              onReveal={onReveal}
               onEnlarge={() => setEnlarged(c.key)}
             >
               <button
@@ -81,7 +105,14 @@ export default function CardsTab({ gameState }) {
           <p style={{ fontStyle: 'italic' }}>{cards[`${enlarged}_tagline`]}</p>
           <p>{cards[`${enlarged}_desc`]}</p>
           {enlarged === 'mission' && cards.bonus_points && (
-            <p style={{ color: 'var(--success)' }}>Bonus: +{cards.bonus_points} points</p>
+            <p className="success-text">Bonus: +{cards.bonus_points} points</p>
+          )}
+          {enlarged === 'resources' && (
+            <div className="grid-2" style={{ marginTop: 12 }}>
+              {cardStats('resources', cards).map((s) => (
+                <div className="stat-tile" key={s.label}><div className="value">{s.value}</div><div className="label">{s.label}</div></div>
+              ))}
+            </div>
           )}
         </Modal>
       )}

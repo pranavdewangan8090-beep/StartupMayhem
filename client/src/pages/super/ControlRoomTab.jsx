@@ -77,7 +77,7 @@ export default function ControlRoomTab() {
         ) : (
           <p>No mayhem triggered yet.</p>
         )}
-        <button className="btn btn-danger btn-block" disabled={busy} onClick={trigger}>⚡ Trigger Random Mayhem</button>
+        <button className="btn btn-danger btn-block" disabled={busy} onClick={trigger}>Trigger Random Mayhem</button>
       </div>
 
       {protections && (

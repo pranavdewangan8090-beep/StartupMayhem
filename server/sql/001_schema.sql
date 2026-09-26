@@ -181,17 +181,6 @@ create table trade_offers (
 create unique index trade_offers_one_pending on trade_offers(listing_id, buyer_team_id) where status = 'pending';
 create index trade_offers_offered_card on trade_offers(offered_card_id) where status = 'pending';
 
-create table notifications (
-  id          bigserial primary key,
-  team_id     int not null references teams(id) on delete cascade,
-  type        text not null,
-  title       text not null,
-  body        text not null default '',
-  read_at     timestamptz,
-  created_at  timestamptz not null default now()
-);
-create index notifications_team on notifications(team_id, created_at desc);
-
 -- ---------------------------------------------------------------------------
 -- Lock down the public Supabase API: only the server (postgres role) gets in.
 -- ---------------------------------------------------------------------------
