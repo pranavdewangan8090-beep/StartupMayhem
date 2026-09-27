@@ -2,10 +2,12 @@ import pg from 'pg';
 import { config } from '../config.js';
 
 // Supabase's pooled connection endpoint requires SSL; the Node pg driver needs
-// this set explicitly (it does not read it from the connection string).
+// this set explicitly (it does not read it from the connection string). Keyed
+// off the host rather than NODE_ENV so local dev against Supabase works too.
+const usesSupabase = /supabase\.co|supabase\.com/.test(config.databaseUrl);
 export const pool = new pg.Pool({
   connectionString: config.databaseUrl,
-  ssl: config.nodeEnv === 'production' ? { rejectUnauthorized: false } : undefined,
+  ssl: usesSupabase ? { rejectUnauthorized: false } : undefined,
   max: 10,
 });
 
