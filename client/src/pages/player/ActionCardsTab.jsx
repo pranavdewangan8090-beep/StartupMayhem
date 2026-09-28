@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { api, newRequestId, ApiError } from '../../lib/api.js';
+import { supabase, call, newRequestId, ApiError } from '../../lib/supabase.js';
 import { useToast } from '../../lib/ToastContext.jsx';
 import Modal from '../../components/Modal.jsx';
 
@@ -18,10 +18,10 @@ export default function ActionCardsTab({ gameState, onChanged }) {
 
   async function loadAll() {
     const [c, h, t, d] = await Promise.all([
-      api.get('/action-cards/catalog'),
-      api.get('/action-cards/hand'),
-      api.get('/action-cards/teams'),
-      api.get('/action-cards/deals/incoming'),
+      call(supabase.rpc('fn_action_card_catalog')),
+      call(supabase.rpc('fn_player_hand')),
+      call(supabase.rpc('fn_other_teams')),
+      call(supabase.rpc('fn_deals_incoming')),
     ]);
     setCatalog(c);
     setHand(h);
@@ -33,7 +33,7 @@ export default function ActionCardsTab({ gameState, onChanged }) {
   async function request(actionCardId) {
     setBusy(true);
     try {
-      await api.post('/action-cards/request', { actionCardId, requestId: newRequestId() });
+      await call(supabase.rpc('fn_r2_request_card', { p_action_card_id: actionCardId, p_request_id: newRequestId() }));
       toast('Card requested!', 'success');
       await loadAll();
       onChanged?.();
@@ -47,7 +47,7 @@ export default function ActionCardsTab({ gameState, onChanged }) {
   async function playSelf(teamActionCardId) {
     setBusy(true);
     try {
-      await api.post('/action-cards/play/self', { teamActionCardId, requestId: newRequestId() });
+      await call(supabase.rpc('fn_play_self_card', { p_team_action_card_id: teamActionCardId, p_request_id: newRequestId() }));
       toast('Card played!', 'success');
       await loadAll();
       onChanged?.();
@@ -62,11 +62,11 @@ export default function ActionCardsTab({ gameState, onChanged }) {
     if (!selectedTeamId) return;
     setBusy(true);
     try {
-      await api.post('/action-cards/play/deal', {
-        teamActionCardId: playTarget.card.id,
-        partnerTeamId: Number(selectedTeamId),
-        requestId: newRequestId(),
-      });
+      await call(supabase.rpc('fn_play_deal_card', {
+        p_team_action_card_id: playTarget.card.id,
+        p_partner_team_id: Number(selectedTeamId),
+        p_request_id: newRequestId(),
+      }));
       toast('Deal proposed — waiting for their response.', 'success');
       setPlayTarget(null);
       setSelectedTeamId('');
@@ -82,7 +82,7 @@ export default function ActionCardsTab({ gameState, onChanged }) {
   async function respondDeal(cardPlayId, accept) {
     setBusy(true);
     try {
-      await api.post('/action-cards/deals/respond', { cardPlayId, accept, requestId: newRequestId() });
+      await call(supabase.rpc('fn_respond_deal_card', { p_card_play_id: cardPlayId, p_accept: accept, p_request_id: newRequestId() }));
       toast(accept ? 'Deal accepted!' : 'Deal rejected.', accept ? 'success' : 'info');
       await loadAll();
       onChanged?.();

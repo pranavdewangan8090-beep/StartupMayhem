@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
-import { api } from '../../lib/api.js';
+import { supabase, call } from '../../lib/supabase.js';
 
 export default function DashboardTab() {
   const [status, setStatus] = useState(null);
 
   useEffect(() => {
-    api.get('/player/status').then(setStatus);
+    call(supabase.rpc('fn_player_status')).then((rows) => setStatus(rows?.[0]));
   }, []);
 
   if (!status) return <div className="empty-state">Loading company status…</div>;
