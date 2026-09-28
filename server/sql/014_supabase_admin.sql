@@ -72,6 +72,9 @@ $$;
 grant execute on function fn_admin_team_cards(int) to authenticated;
 revoke execute on function fn_admin_team_cards(int) from anon;
 
+-- Round 3 update: resource and decision-point changes are Super Admin only
+-- (admins no longer qualify) — see server/sql/018_round3_functions.sql for
+-- the crisis/trade system that replaces admin's old resource-adjust role.
 create or replace function fn_admin_adjust_resources(p_team_id int, p_delta jsonb)
 returns jsonb
 language plpgsql security definer
@@ -83,7 +86,7 @@ declare
   v_after jsonb;
   v_c record;
 begin
-  perform 1 from fn_require_role(array['admin','super_admin']);
+  perform 1 from fn_require_role(array['super_admin']);
 
   select * into v_team from teams where id = p_team_id for update;
   if v_team.id is null then raise exception 'TEAM_NOT_FOUND'; end if;
@@ -114,7 +117,7 @@ as $$
 declare
   v_row teams%rowtype;
 begin
-  perform 1 from fn_require_role(array['admin','super_admin']);
+  perform 1 from fn_require_role(array['super_admin']);
 
   update teams set decision_points = decision_points + coalesce((p_payload->>'delta')::int, 0)
   where id = p_team_id

@@ -4,9 +4,10 @@ import { supabase, call, ApiError } from '../lib/supabase.js';
 import { useToast } from '../lib/ToastContext.jsx';
 
 /**
- * Shared by both the Admin and Super Admin panels: the team list plus the
- * resource-adjustment and decision-points modals. Both roles hit the same
- * /api/admin/* endpoints — the server enforces the finer-grained differences.
+ * Super Admin only: the team list plus the resource-adjustment and
+ * decision-points modals. Admins can no longer change a team's resources or
+ * decision points (Round 3 update) — they process trades instead, from
+ * AdminApp's Trade panel.
  */
 export default function TeamResourcePanel() {
   const [teams, setTeams] = useState([]);

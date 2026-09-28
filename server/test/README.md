@@ -29,8 +29,9 @@ accounts rather than maintaining separate fixtures.
 - Any global toggle a test needs open (`r1_replace_open`, `r2_selection_open`,
   `card_play_open`) is read first, changed, and restored to its original
   value afterward.
-- `mayhem.test.js` is read-only + role-boundary only. Round 3 has only 3
-  events total and one response per team per event — both genuinely
-  mutating operations (`fn_trigger_mayhem_event`, `fn_record_mayhem_response`)
-  touch real, shared event-day state that a disposable team can't isolate,
-  so they aren't exercised here.
+- `crisis.test.js`'s crisis-triggering paths (`fn_super_trigger_crisis`,
+  `fn_super_set_crisis_team_status`) are read-only + role-boundary only —
+  there are only 2-3 crises total in a fixed sequence, shared event-day state
+  a disposable team can't isolate. Trading (`fn_admin_process_trade`) doesn't
+  touch that shared sequencing, so it's exercised end-to-end against
+  disposable teams like everything else.

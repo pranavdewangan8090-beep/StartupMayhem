@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { supabase, call, newRequestId, ApiError } from '../../lib/supabase.js';
+import { supabase, call, ApiError } from '../../lib/supabase.js';
 import { useToast } from '../../lib/ToastContext.jsx';
 
 const TOGGLES = [
@@ -8,69 +8,60 @@ const TOGGLES = [
   { key: 'card_play_open', label: 'Playing Action Cards' },
 ];
 
-const RESPONSE_LABEL = { accept: 'Accept', spend: 'Spend', adapt: 'Adapt', partner: 'Partner' };
-const TIER_LABEL = { hit_hard: 'Hit Hard', hit: 'Hit', unaffected: 'Unaffected', gains: 'Gains' };
+const STATUS_LABEL = { pending: 'Pending', used_card: 'Use Action Card', traded: 'Traded', penalized: 'Penalized' };
+const STATUS_OPTIONS = ['pending', 'used_card', 'traded', 'penalized'];
 
-function formatDelta(applied) {
-  if (!applied) return '';
-  const parts = [];
-  if (applied.cash_l) parts.push(`${applied.cash_l > 0 ? '+' : ''}₹${applied.cash_l / 10}M Cash`);
-  if (applied.customers) parts.push(`${applied.customers > 0 ? '+' : ''}${applied.customers / 1000}k Customers`);
-  if (applied.reputation) parts.push(`${applied.reputation > 0 ? '+' : ''}${applied.reputation} Reputation`);
-  if (applied.innovation) parts.push(`${applied.innovation > 0 ? '+' : ''}${applied.innovation} Innovation`);
-  return parts.length ? parts.join(' · ') : 'No change';
-}
-
-function ResponseForm({ team, teams, busy, onSubmit }) {
-  const [response, setResponse] = useState('accept');
-  const [partnerTeamId, setPartnerTeamId] = useState('');
-  const needsPartner = response === 'partner' && (team.tier === 'hit_hard' || team.tier === 'hit');
-
+function StatusCell({ crisisId, team, busy, onSet }) {
   return (
-    <div className="response-form">
-      <select value={response} onChange={(e) => setResponse(e.target.value)}>
-        {Object.entries(RESPONSE_LABEL).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
-      </select>
-      {needsPartner && (
-        <select value={partnerTeamId} onChange={(e) => setPartnerTeamId(e.target.value)}>
-          <option value="">Partner team…</option>
-          {teams.filter((t) => t.team_id !== team.team_id).map((t) => (
-            <option key={t.team_id} value={t.team_id}>{t.team_code}</option>
-          ))}
-        </select>
-      )}
-      <button
-        className="btn btn-primary btn-sm"
-        disabled={busy || (needsPartner && !partnerTeamId)}
-        onClick={() => onSubmit(team.team_id, response, partnerTeamId ? Number(partnerTeamId) : null)}
-      >
-        Record
-      </button>
-    </div>
+    <select
+      value={team.status}
+      disabled={busy}
+      onChange={(e) => onSet(crisisId, team.team_id, e.target.value)}
+    >
+      {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
+    </select>
   );
 }
 
 export default function ControlRoomTab() {
   const [toggles, setToggles] = useState(null);
-  const [events, setEvents] = useState([]);
-  const [mayhem, setMayhem] = useState(null);
-  const [teamStatus, setTeamStatus] = useState([]);
-  const [showOverlay, setShowOverlay] = useState(false);
+  const [crises, setCrises] = useState([]);
+  const [selectedCrisisId, setSelectedCrisisId] = useState(null);
+  const [crisisStatus, setCrisisStatus] = useState([]);
+  const [usefulCards, setUsefulCards] = useState([]);
+  const [tradeToggles, setTradeToggles] = useState(null);
   const [busy, setBusy] = useState(false);
   const toast = useToast();
 
   async function load() {
-    const [t, ev, m] = await Promise.all([
+    const [t, cr, tt] = await Promise.all([
       call(supabase.rpc('fn_super_toggles_get')),
-      call(supabase.rpc('fn_mayhem_events')),
-      call(supabase.rpc('fn_mayhem_current')).then((rows) => rows?.[0] ?? null),
+      call(supabase.rpc('fn_admin_crisis_list')),
+      call(supabase.rpc('fn_super_trade_toggles_all')),
     ]);
     setToggles(t);
-    setEvents(ev);
-    setMayhem(m);
-    setTeamStatus(m ? await call(supabase.rpc('fn_mayhem_team_status')) : []);
+    setCrises(cr);
+    setTradeToggles(tt);
+    const firstTriggered = cr.find((c) => c.is_triggered)?.id ?? null;
+    const nextSelected = selectedCrisisId ?? firstTriggered;
+    setSelectedCrisisId(nextSelected);
+    if (nextSelected) await loadCrisisDetail(nextSelected);
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function loadCrisisDetail(crisisId) {
+    const [status, useful] = await Promise.all([
+      call(supabase.rpc('fn_admin_crisis_status', { p_crisis_id: crisisId })),
+      call(supabase.rpc('fn_admin_crisis_useful_cards', { p_crisis_id: crisisId })),
+    ]);
+    setCrisisStatus(status);
+    setUsefulCards(useful);
+  }
+
+  async function selectCrisis(id) {
+    setSelectedCrisisId(id);
+    await loadCrisisDetail(id);
+  }
 
   async function flip(key, value) {
     setBusy(true);
@@ -82,61 +73,60 @@ export default function ControlRoomTab() {
     } finally { setBusy(false); }
   }
 
-  async function trigger() {
+  async function triggerCrisis() {
     setBusy(true);
     try {
-      const triggered = await call(supabase.rpc('fn_trigger_mayhem_event'));
-      // set the mayhem + open the overlay from the trigger response itself
-      // (no round trip through load() needed to know what just got triggered)
-      setMayhem(triggered);
-      setShowOverlay(true);
-      toast('Mayhem event triggered!', 'success');
-      const [ev, ts] = await Promise.all([
-        call(supabase.rpc('fn_mayhem_events')),
-        call(supabase.rpc('fn_mayhem_team_status')),
-      ]);
-      setEvents(ev);
-      setTeamStatus(ts);
+      const triggered = await call(supabase.rpc('fn_super_trigger_crisis'));
+      toast(`Crisis triggered: ${triggered.title}`, 'success');
+      await load();
+      setSelectedCrisisId(triggered.id);
+      await loadCrisisDetail(triggered.id);
     } catch (err) {
-      toast(err instanceof ApiError ? err.message : 'Could not trigger the next event.', 'error');
+      toast(err instanceof ApiError ? err.message : 'Could not trigger the next crisis.', 'error');
     } finally { setBusy(false); }
   }
 
-  async function recordResponse(teamId, response, partnerTeamId) {
+  async function randomizeTeams(crisisId) {
     setBusy(true);
     try {
-      await call(supabase.rpc('fn_record_mayhem_response', {
-        p_team_id: teamId, p_response: response, p_partner_team_id: partnerTeamId, p_request_id: newRequestId(),
-      }));
-      toast('Response recorded.', 'success');
-      setTeamStatus(await call(supabase.rpc('fn_mayhem_team_status')));
+      await call(supabase.rpc('fn_super_randomize_crisis_teams', { p_crisis_id: crisisId, p_count: 2 }));
+      toast('Placeholder affected teams assigned.', 'success');
+      await loadCrisisDetail(crisisId);
     } catch (err) {
-      toast(err instanceof ApiError ? err.message : 'Could not record response.', 'error');
+      toast(err instanceof ApiError ? err.message : 'Could not assign teams.', 'error');
+    } finally { setBusy(false); }
+  }
+
+  async function setStatus(crisisId, teamId, status) {
+    setBusy(true);
+    try {
+      await call(supabase.rpc('fn_super_set_crisis_team_status', { p_crisis_id: crisisId, p_team_id: teamId, p_status: status }));
+      await loadCrisisDetail(crisisId);
+    } catch (err) {
+      toast(err instanceof ApiError ? err.message : 'Could not update status.', 'error');
+    } finally { setBusy(false); }
+  }
+
+  async function toggleTrading(enabled) {
+    setBusy(true);
+    try {
+      await call(supabase.rpc('fn_super_trade_toggle_set', { p_enabled: enabled }));
+      toast(`You turned trading ${enabled ? 'ON' : 'OFF'} for your account.`, 'success');
+      await load();
+    } catch (err) {
+      toast(err instanceof ApiError ? err.message : 'Could not update the trade toggle.', 'error');
     } finally { setBusy(false); }
   }
 
   if (!toggles) return <div className="empty-state">Loading…</div>;
 
-  const triggeredCount = events.filter((e) => e.is_triggered).length;
-  const allTriggered = events.length > 0 && triggeredCount === events.length;
+  const triggeredCount = crises.filter((c) => c.is_triggered).length;
+  const allTriggered = crises.length > 0 && triggeredCount === crises.length;
+  const selectedCrisis = crises.find((c) => c.id === selectedCrisisId);
+  const effectiveTradingOn = tradeToggles?.some((t) => t.enabled) ?? false;
 
   return (
     <div>
-      {mayhem && showOverlay && (
-        <div className="mayhem-overlay" onClick={() => setShowOverlay(false)}>
-          <div className="mayhem-overlay-card" onClick={(e) => e.stopPropagation()}>
-            <button className="modal-close" onClick={() => setShowOverlay(false)} aria-label="Close">&times;</button>
-            <span className="pill mayhem-event-pill">Event {mayhem.number} of 3</span>
-            <h1>{mayhem.title}</h1>
-            <p className="mayhem-overlay-story">{mayhem.story_text}</p>
-            <p className="mayhem-overlay-effect"><b>Effect:</b> {mayhem.effect_text}</p>
-            <div className="tag-row" style={{ marginTop: 10 }}>
-              {mayhem.tags?.map((t) => <span key={t} className="tag-chip">{t}</span>)}
-            </div>
-          </div>
-        </div>
-      )}
-
       <div className="desktop-grid">
         <div className="card-surface section">
           <h2>Game Toggles</h2>
@@ -155,45 +145,78 @@ export default function ControlRoomTab() {
         </div>
 
         <div className="card-surface section">
-          <h2>Round 3: Market Mayhem</h2>
-          <p>{triggeredCount} of {events.length} events triggered.</p>
+          <h2>Card Trading</h2>
+          <p>
+            Overall status: <b className={effectiveTradingOn ? 'success-text' : 'warning-text'}>
+              {effectiveTradingOn ? 'ENABLED' : 'DISABLED'}
+            </b>
+          </p>
+          <p>ON as soon as one Super Admin enables it. OFF only once every Super Admin disables it.</p>
           <div className="row" style={{ gap: 8, marginTop: 8 }}>
-            <button className="btn btn-danger" disabled={busy || allTriggered} onClick={trigger}>
-              {allTriggered ? 'All Events Triggered' : 'Trigger Next Event'}
+            <button className="btn btn-success btn-sm" disabled={busy} onClick={() => toggleTrading(true)}>Turn ON (mine)</button>
+            <button className="btn btn-danger btn-sm" disabled={busy} onClick={() => toggleTrading(false)}>Turn OFF (mine)</button>
+          </div>
+          <div className="table-scroll" style={{ marginTop: 12 }}>
+            <table className="data-table">
+              <thead><tr><th>Super Admin</th><th>Their Setting</th></tr></thead>
+              <tbody>
+                {tradeToggles?.map((t) => (
+                  <tr key={t.super_admin_login}>
+                    <td>{t.super_admin_login}</td>
+                    <td>{t.enabled ? 'ON' : 'OFF'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="card-surface section">
+          <h2>Round 3: Crises</h2>
+          <p>{triggeredCount} of {crises.length} crises triggered.</p>
+          <div className="row" style={{ gap: 8, marginTop: 8 }}>
+            <button className="btn btn-danger" disabled={busy || allTriggered} onClick={triggerCrisis}>
+              {allTriggered ? 'All Crises Triggered' : 'Trigger Next Crisis'}
             </button>
-            {mayhem && (
-              <button className="btn btn-ghost" onClick={() => setShowOverlay(true)}>Show Event</button>
-            )}
+          </div>
+          <div className="row" style={{ gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+            {crises.filter((c) => c.is_triggered).map((c) => (
+              <button
+                key={c.id}
+                className={`btn btn-sm ${selectedCrisisId === c.id ? 'btn-primary' : 'btn-ghost'}`}
+                onClick={() => selectCrisis(c.id)}
+              >
+                {c.title}
+              </button>
+            ))}
           </div>
         </div>
       </div>
 
-      {mayhem && (
+      {selectedCrisis && (
         <div className="card-surface section">
-          <h2>Event {mayhem.number}: {mayhem.title}</h2>
-          <p>Record each team's response as decided at the table. Effects apply automatically.</p>
+          <h2>Crisis {selectedCrisis.number}: {selectedCrisis.title}</h2>
+          <p><b>Useful action cards:</b> {usefulCards.length ? usefulCards.map((c) => c.name).join(', ') : 'None configured'}</p>
+          <div className="row" style={{ gap: 8, marginBottom: 12 }}>
+            <button className="btn btn-ghost btn-sm" disabled={busy} onClick={() => randomizeTeams(selectedCrisis.id)}>
+              Randomly Assign Placeholder Affected Teams
+            </button>
+          </div>
+          <p>Affected teams and their resolution. "Use Action Card" and "Traded" mean no resource change. "Penalized" is a reminder to manually reduce that team's resources from the Teams tab.</p>
           <div className="table-scroll">
             <table className="data-table">
-              <thead>
-                <tr><th>Team</th><th>Market</th><th>Tier</th><th>Response</th></tr>
-              </thead>
+              <thead><tr><th>Team</th><th>Status</th><th>Last Updated</th></tr></thead>
               <tbody>
-                {teamStatus.map((t) => (
+                {crisisStatus.map((t) => (
                   <tr key={t.team_id}>
                     <td><b>{t.team_code}</b></td>
-                    <td>{t.market_title}</td>
-                    <td><span className={`pill tier-${t.tier}`}>{TIER_LABEL[t.tier] || t.tier}</span></td>
-                    <td>
-                      {t.response ? (
-                        <span className="response-recorded">
-                          {RESPONSE_LABEL[t.response]}{t.partner_team_code ? ` w/ ${t.partner_team_code}` : ''} — {formatDelta(t.applied)}
-                        </span>
-                      ) : (
-                        <ResponseForm team={t} teams={teamStatus} busy={busy} onSubmit={recordResponse} />
-                      )}
-                    </td>
+                    <td><StatusCell crisisId={selectedCrisis.id} team={t} busy={busy} onSet={setStatus} /></td>
+                    <td>{t.updated_by_login ? `${t.updated_by_login} · ${new Date(t.updated_at).toLocaleTimeString()}` : '—'}</td>
                   </tr>
                 ))}
+                {crisisStatus.length === 0 && (
+                  <tr><td colSpan={3}>No affected teams assigned yet.</td></tr>
+                )}
               </tbody>
             </table>
           </div>

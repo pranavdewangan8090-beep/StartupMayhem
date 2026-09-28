@@ -55,10 +55,14 @@ const CODE_MAP = {
   PARTNER_NOT_FOUND: 'Partner team not found.',
   DEAL_NOT_FOUND: 'Deal offer not found.',
   DEAL_ALREADY_RESOLVED: 'This deal was already resolved.',
-  NO_MORE_EVENTS: 'All 3 Market Mayhem events have already been triggered.',
-  EVENT_NOT_FOUND: 'Mayhem event not found.',
-  BAD_RESPONSE: 'Unknown response type.',
-  PARTNER_REQUIRED: 'A partner team is required for this response.',
+  NO_MORE_CRISES: 'All crises have already been triggered.',
+  CRISIS_NOT_FOUND: 'Crisis not found.',
+  BAD_STATUS: 'Unknown crisis status.',
+  TEAM_NOT_AFFECTED: 'That team is not listed as affected by this crisis.',
+  TRADING_DISABLED: 'Card trading is currently switched off by the Super Admins.',
+  CANNOT_TRADE_SELF: 'A team cannot trade with itself.',
+  BAD_MONEY_AMOUNT: 'The money amount cannot be negative.',
+  MONEY_TEAM_INVALID: 'The paying team must be one of the two teams in the trade.',
 };
 
 export class ApiError extends Error {

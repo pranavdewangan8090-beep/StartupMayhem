@@ -47,6 +47,16 @@ describe('super admin only', () => {
     assert.ok(created.teamId);
     assert.ok(created.password);
 
+    const resResult = await superAdmin.rpc('fn_admin_adjust_resources', {
+      p_team_id: created.teamId,
+      p_delta: { cash_l: 5, reputation: 100 }, // reputation intentionally overflows the 0-5 cap
+    });
+    assert.equal(resResult.after.cash_l, resResult.before.cash_l + 5);
+    assert.equal(resResult.after.reputation, 5, 'reputation should clamp at 5');
+
+    const pointsResult = await superAdmin.rpc('fn_admin_adjust_decision_points', { p_team_id: created.teamId, p_payload: { delta: 7 } });
+    assert.equal(pointsResult.decision_points, 7);
+
     await superAdmin.rpc('fn_super_mark_mission', { p_team_id: created.teamId, p_completed: true });
     const leaderboard = await superAdmin.rpc('fn_super_leaderboard_raw');
     const row = leaderboard.find((r) => r.team_id === created.teamId);

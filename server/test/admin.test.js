@@ -23,24 +23,24 @@ after(async () => {
   await closePool();
 });
 
-describe('admin (fn_admin_*): both admin and super_admin may act', () => {
+describe('admin (fn_admin_*): read paths are shared, resource/points writes are Super Admin only', () => {
   test('fn_admin_teams lists the disposable team', async () => {
     const teams = await admin.rpc('fn_admin_teams');
     assert.ok(teams.some((t) => t.id === team.teamId));
   });
 
-  test('fn_admin_adjust_resources applies deltas with caps/floors', async () => {
-    const result = await admin.rpc('fn_admin_adjust_resources', {
-      p_team_id: team.teamId,
-      p_delta: { cash_l: 5, reputation: 100 }, // reputation intentionally overflows the 0-5 cap
-    });
-    assert.equal(result.after.cash_l, result.before.cash_l + 5);
-    assert.equal(result.after.reputation, 5, 'reputation should clamp at 5');
+  test('Round 3: an admin (not super_admin) can no longer adjust resources', async () => {
+    await assert.rejects(
+      () => admin.rpc('fn_admin_adjust_resources', { p_team_id: team.teamId, p_delta: { cash_l: 5 } }),
+      (err) => err.message === 'NOT_AUTHENTICATED'
+    );
   });
 
-  test('fn_admin_adjust_decision_points is hidden from players but not admin', async () => {
-    const updated = await admin.rpc('fn_admin_adjust_decision_points', { p_team_id: team.teamId, p_payload: { delta: 7 } });
-    assert.equal(updated.decision_points, 7);
+  test('Round 3: an admin (not super_admin) can no longer adjust decision points', async () => {
+    await assert.rejects(
+      () => admin.rpc('fn_admin_adjust_decision_points', { p_team_id: team.teamId, p_payload: { delta: 7 } }),
+      (err) => err.message === 'NOT_AUTHENTICATED'
+    );
   });
 
   test('a player cannot call any admin function', async () => {

@@ -1,5 +1,5 @@
 // Creates the real accounts for the event: 30 teams (with a random deal of the
-// 5 identity cards each), 30 admins, 5 super admins. Passwords are randomly
+// 5 identity cards each), 20 admins, 10 super admins. Passwords are randomly
 // generated and written to a local CSV — this file is NEVER committed
 // (it's covered by .gitignore) and should be deleted/moved somewhere safe
 // once you've handed out credentials.
@@ -12,8 +12,8 @@ import bcrypt from 'bcryptjs';
 import pg from 'pg';
 
 const TEAM_COUNT = 30;
-const ADMIN_COUNT = 30;
-const SUPER_ADMIN_COUNT = 5;
+const ADMIN_COUNT = 20;
+const SUPER_ADMIN_COUNT = 10;
 
 function randomPassword() {
   // 8 chars, unambiguous alphabet (no 0/O, 1/I/l) — easy to hand-write on a card
