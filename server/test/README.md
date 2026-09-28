@@ -26,9 +26,8 @@ accounts rather than maintaining separate fixtures.
   via `fn_super_add_team` (`TEST-...` team codes) and permanently deleted via
   `db.js`'s direct-Postgres `deleteTestTeam()` in an `after()` hook — never on
   one of the real 30 seeded teams.
-- Any global toggle a test needs open (`r1_replace_open`, `r2_selection_open`,
-  `card_play_open`) is read first, changed, and restored to its original
-  value afterward.
+- Any global toggle a test needs open (`r1_replace_open`, `card_play_open`)
+  is read first, changed, and restored to its original value afterward.
 - `crisis.test.js`'s crisis-triggering paths (`fn_super_trigger_crisis`,
   `fn_super_set_crisis_team_status`) are read-only + role-boundary only —
   there are only 2-3 crises total in a fixed sequence, shared event-day state

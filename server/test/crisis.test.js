@@ -68,13 +68,9 @@ describe('crisis read paths', () => {
 });
 
 describe('trading', () => {
-  let teamA, teamB, playerA, playerB, savedToggles, wasTradingEnabled;
+  let teamA, teamB, playerA, playerB, wasTradingEnabled;
 
   before(async () => {
-    const toggles = await superAdmin.rpc('fn_super_toggles_get');
-    savedToggles = { r2_selection_open: toggles.r2_selection_open };
-    await superAdmin.rpc('fn_super_toggles_set', { p_key: 'r2_selection_open', p_value: true });
-
     const status = (await superAdmin.rpc('fn_trade_feature_status'))[0];
     wasTradingEnabled = status.enabled;
     if (!wasTradingEnabled) await superAdmin.rpc('fn_super_trade_toggle_set', { p_enabled: true });
@@ -88,19 +84,18 @@ describe('trading', () => {
   });
 
   after(async () => {
-    await superAdmin.rpc('fn_super_toggles_set', { p_key: 'r2_selection_open', p_value: savedToggles.r2_selection_open });
     if (!wasTradingEnabled) await superAdmin.rpc('fn_super_trade_toggle_set', { p_enabled: false });
     await deleteTestTeam(teamA.teamId);
     await deleteTestTeam(teamB.teamId);
   });
 
   test('admin can process a trade that swaps held cards between two teams', async () => {
-    const catalog = await playerA.rpc('fn_action_card_catalog');
-    const cardForA = catalog.find((c) => c.category === 'action');
-    const cardForB = catalog.find((c) => c.category === 'action' && c.id !== cardForA.id);
-
-    const heldA = await playerA.rpc('fn_r2_request_card', { p_action_card_id: cardForA.id, p_request_id: crypto.randomUUID() });
-    const heldB = await playerB.rpc('fn_r2_request_card', { p_action_card_id: cardForB.id, p_request_id: crypto.randomUUID() });
+    // both teams are auto-issued a full hand at creation now — just trade
+    // away whichever 'action' category card each one already holds
+    const handA = await playerA.rpc('fn_player_hand');
+    const handB = await playerB.rpc('fn_player_hand');
+    const heldA = handA.find((c) => c.category === 'action');
+    const heldB = handB.find((c) => c.category === 'action');
 
     const result = await admin.rpc('fn_admin_process_trade', {
       p_team_a_id: teamA.teamId, p_team_a_card_id: heldA.id,

@@ -4,7 +4,6 @@ import { useToast } from '../../lib/ToastContext.jsx';
 
 const TOGGLES = [
   { key: 'r1_replace_open', label: 'R1: Card Replacements' },
-  { key: 'r2_selection_open', label: 'R2: Action Card Selection' },
   { key: 'card_play_open', label: 'Playing Action Cards' },
 ];
 

@@ -4,10 +4,8 @@ import { useToast } from '../../lib/ToastContext.jsx';
 import Modal from '../../components/Modal.jsx';
 
 const CAT_LABEL = { action: 'Action Card', deal: 'Deal', special: 'Special / AI' };
-const CATEGORY_ORDER = ['action', 'deal', 'special'];
 
 export default function ActionCardsTab({ gameState, onChanged }) {
-  const [catalog, setCatalog] = useState([]);
   const [hand, setHand] = useState([]);
   const [teams, setTeams] = useState([]);
   const [incomingDeals, setIncomingDeals] = useState([]);
@@ -17,32 +15,16 @@ export default function ActionCardsTab({ gameState, onChanged }) {
   const toast = useToast();
 
   async function loadAll() {
-    const [c, h, t, d] = await Promise.all([
-      call(supabase.rpc('fn_action_card_catalog')),
+    const [h, t, d] = await Promise.all([
       call(supabase.rpc('fn_player_hand')),
       call(supabase.rpc('fn_other_teams')),
       call(supabase.rpc('fn_deals_incoming')),
     ]);
-    setCatalog(c);
     setHand(h);
     setTeams(t);
     setIncomingDeals(d);
   }
   useEffect(() => { loadAll(); }, [gameState?.action_card_count, gameState?.pending_deal_offers_in]);
-
-  async function request(actionCardId) {
-    setBusy(true);
-    try {
-      await call(supabase.rpc('fn_r2_request_card', { p_action_card_id: actionCardId, p_request_id: newRequestId() }));
-      toast('Card requested!', 'success');
-      await loadAll();
-      onChanged?.();
-    } catch (err) {
-      toast(err instanceof ApiError ? err.message : 'Could not request card.', 'error');
-    } finally {
-      setBusy(false);
-    }
-  }
 
   async function playSelf(teamActionCardId) {
     setBusy(true);
@@ -93,17 +75,6 @@ export default function ActionCardsTab({ gameState, onChanged }) {
     }
   }
 
-  const r2Hand = hand.filter((c) => c.source === 'r2');
-  const heldCategories = new Set(r2Hand.map((c) => c.category));
-  const canRequestMore = r2Hand.length < 3;
-
-  // once a team has a card from a category, every other card in that
-  // category disappears from the catalog entirely — not just this one card
-  const groups = CATEGORY_ORDER
-    .filter((cat) => !heldCategories.has(cat))
-    .map((cat) => ({ cat, cards: catalog.filter((c) => c.category === cat) }))
-    .filter((g) => g.cards.length > 0);
-
   return (
     <div>
       {incomingDeals.length > 0 && (
@@ -125,8 +96,9 @@ export default function ActionCardsTab({ gameState, onChanged }) {
       )}
 
       <div className="card-surface section">
-        <h2>Your Hand ({hand.filter((c) => c.status !== 'used').length}/3)</h2>
-        {hand.length === 0 && <p>You haven't picked any action cards yet.</p>}
+        <h2>Your Action Cards ({hand.filter((c) => c.status !== 'used').length}/3)</h2>
+        <p>You were issued one Action, one Deal and one Special/AI card at the start of the game. You can only exchange one of these for a different card during Round 3, through an admin-processed trade.</p>
+        {hand.length === 0 && <p>Loading your cards…</p>}
         <div className="action-grid">
           {hand.map((c) => (
             <div key={c.id} className={`action-card-tile cat-${c.category}`}>
@@ -149,42 +121,6 @@ export default function ActionCardsTab({ gameState, onChanged }) {
           ))}
         </div>
       </div>
-
-      {gameState?.r2_selection_open ? (
-        <div className="card-surface section">
-          <h2>Action Card Catalog</h2>
-          <p>Pick one card from each category — 3 total.</p>
-          {groups.length === 0 ? (
-            <p className="success-text">You've picked all 3 of your cards.</p>
-          ) : (
-            <div className={`catalog-pyramid groups-${groups.length}`}>
-              {groups.map((g) => (
-                <div key={g.cat} className="catalog-group">
-                  <div className="catalog-group-header">
-                    <span className={`pill cat-${g.cat}`}>{CAT_LABEL[g.cat]}</span>
-                  </div>
-                  <div className="catalog-grid">
-                    {g.cards.map((c) => (
-                      <div key={c.id} className="catalog-tile">
-                        <div className="name">{c.name}</div>
-                        <div className="effect">{c.effect_text}</div>
-                        <button className="btn btn-primary btn-sm" disabled={busy || !canRequestMore} onClick={() => request(c.id)}>
-                          Make Request
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="card-surface section">
-          <h2>Action Card Catalog</h2>
-          <p>The catalog opens once the Super Admin starts card selection.</p>
-        </div>
-      )}
 
       {playTarget && (
         <Modal onClose={() => setPlayTarget(null)}>

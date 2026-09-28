@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "seed:cards": "psql \"$DATABASE_URL\" -f sql/001_schema.sql -f sql/002_seed_identity_cards.sql -f sql/003_seed_action_cards.sql -f sql/005_functions.sql -f sql/010_supabase_auth.sql -f sql/011_supabase_cards.sql -f sql/012_supabase_action_cards.sql -f sql/013_supabase_player_state.sql -f sql/014_supabase_admin.sql -f sql/015_login_rate_limit.sql -f sql/016_round3_crises.sql -f sql/017_seed_crises.sql -f sql/018_round3_functions.sql",
+    "seed:cards": "psql \"$DATABASE_URL\" -f sql/001_schema.sql -f sql/002_seed_identity_cards.sql -f sql/003_seed_action_cards.sql -f sql/005_functions.sql -f sql/010_supabase_auth.sql -f sql/011_supabase_cards.sql -f sql/012_supabase_action_cards.sql -f sql/013_supabase_player_state.sql -f sql/014_supabase_admin.sql -f sql/015_login_rate_limit.sql -f sql/016_round3_crises.sql -f sql/017_seed_crises.sql -f sql/018_round3_functions.sql -f sql/019_auto_allot_action_cards.sql",
     "seed:users": "node scripts/seedUsers.js",
     "test": "node --test --test-concurrency=1"
   },
