@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext.jsx';
 import { ApiError } from '../lib/supabase.js';
 import ECellLogo from '../components/ECellLogo.jsx';
+import AmbientField from '../components/AmbientField.jsx';
 
 const ROLES = [
   { key: 'player', label: 'Player / Team' },
@@ -35,6 +36,7 @@ export default function Login() {
 
   return (
     <div className="login-wrap">
+      <AmbientField />
       <div className="login-card">
         <Link to="/" className="login-back">← THE MAYHEMVERSE</Link>
         <div className="login-brand-mark"><ECellLogo size={44} /></div>

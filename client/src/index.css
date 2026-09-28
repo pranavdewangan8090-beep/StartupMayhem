@@ -97,17 +97,18 @@ a { color: var(--accent); text-decoration: none; }
 .topbar .brand { display: flex; align-items: center; gap: 8px; font-weight: 700; letter-spacing: 0.03em; font-size: 1.05rem; color: var(--text); }
 .topbar .brand span { color: var(--accent); font-weight: 700; }
 .ecell-logo { display: block; object-fit: contain; flex-shrink: 0; }
-.topbar .logout-btn {
+.logout-btn {
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid var(--border);
   color: var(--text-dim);
   padding: 7px 14px;
+  min-height: 44px;
   border-radius: 999px;
   font-size: 0.78rem;
   cursor: pointer;
   transition: border-color 0.15s ease, color 0.15s ease;
 }
-.topbar .logout-btn:hover { border-color: var(--border-strong); color: var(--text); }
+.logout-btn:hover { border-color: var(--border-strong); color: var(--text); }
 
 .tabbar {
   display: flex;
@@ -136,7 +137,7 @@ a { color: var(--accent); text-decoration: none; }
   transition: background 0.15s ease, color 0.15s ease;
 }
 .tabbar button.active {
-  background: linear-gradient(135deg, rgba(205, 168, 106, 0.22), rgba(138, 127, 214, 0.18));
+  background: linear-gradient(135deg, rgba(240, 184, 0, 0.22), rgba(34, 211, 238, 0.18));
   border-color: var(--border-strong);
   color: var(--text);
 }
@@ -280,8 +281,8 @@ p { color: var(--text-dim); line-height: 1.45; margin: 4px 0; }
   align-items: center;
   justify-content: center;
   background:
-    radial-gradient(circle at 30% 20%, rgba(205, 168, 106, 0.14), transparent 55%),
-    radial-gradient(circle at 75% 80%, rgba(138, 127, 214, 0.14), transparent 55%),
+    radial-gradient(circle at 30% 20%, rgba(240, 184, 0, 0.14), transparent 55%),
+    radial-gradient(circle at 75% 80%, rgba(34, 211, 238, 0.14), transparent 55%),
     linear-gradient(160deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
   gap: 14px;
 }
@@ -450,8 +451,41 @@ p { color: var(--text-dim); line-height: 1.45; margin: 4px 0; }
   justify-content: center;
   padding: 24px;
   position: relative;
+  overflow: hidden;
 }
-.login-card { width: 100%; max-width: 380px; }
+.login-card { position: relative; z-index: 1; width: 100%; max-width: 380px; }
+
+/* Ambient motion for utility pages that don't carry the full 3D hero —
+   drifting glow orbs + floating particles, CSS-only. */
+.ambient-field { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+.ambient-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(40px);
+  opacity: 0.55;
+  animation: ambient-drift 16s ease-in-out infinite;
+}
+.orb-gold { width: 320px; height: 320px; top: -80px; left: -60px; background: radial-gradient(circle, rgba(240, 184, 0, 0.5), transparent 70%); }
+.orb-cyan { width: 280px; height: 280px; bottom: -70px; right: -50px; background: radial-gradient(circle, rgba(34, 211, 238, 0.4), transparent 70%); animation-duration: 20s; animation-direction: reverse; }
+.ambient-particle {
+  position: absolute;
+  border-radius: 50%;
+  animation: ambient-float ease-in-out infinite;
+}
+.ambient-particle.tone-gold { background: var(--brand-gold); box-shadow: 0 0 8px rgba(240, 184, 0, 0.7); }
+.ambient-particle.tone-cyan { background: var(--accent-2); box-shadow: 0 0 8px rgba(34, 211, 238, 0.6); }
+
+@keyframes ambient-drift {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(40px, 30px) scale(1.08); }
+}
+@keyframes ambient-float {
+  0%, 100% { transform: translateY(0) translateX(0); opacity: 0.35; }
+  50% { transform: translateY(-22px) translateX(10px); opacity: 0.9; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ambient-orb, .ambient-particle { animation: none; opacity: 0.4; }
+}
 .login-back {
   display: inline-block;
   font-size: 0.68rem;
@@ -496,7 +530,7 @@ p { color: var(--text-dim); line-height: 1.45; margin: 4px 0; }
   transition: background 0.15s ease, color 0.15s ease;
 }
 .role-switch button.active {
-  background: linear-gradient(135deg, rgba(205, 168, 106, 0.25), rgba(138, 127, 214, 0.2));
+  background: linear-gradient(135deg, rgba(240, 184, 0, 0.25), rgba(34, 211, 238, 0.2));
   color: var(--text);
 }
 
@@ -533,14 +567,17 @@ table.data-table th { color: var(--text-dim); font-weight: 600; font-size: 0.72r
   display: flex;
   position: relative;
 }
+@media (max-width: 860px) {
+  .super-shell { flex-direction: column; }
+}
 .super-shell::before {
   content: '';
   position: fixed;
   inset: 0;
   z-index: -1;
   background:
-    radial-gradient(circle at 12% 10%, rgba(205, 168, 106, 0.14), transparent 45%),
-    radial-gradient(circle at 88% 20%, rgba(138, 127, 214, 0.14), transparent 50%),
+    radial-gradient(circle at 12% 10%, rgba(240, 184, 0, 0.14), transparent 45%),
+    radial-gradient(circle at 88% 20%, rgba(34, 211, 238, 0.14), transparent 50%),
     linear-gradient(180deg, #0d0e15 0%, #0a0b10 55%, #08090d 100%);
 }
 .super-sidebar {
@@ -568,6 +605,7 @@ table.data-table th { color: var(--text-dim); font-weight: 600; font-size: 0.72r
   border: 1px solid transparent;
   color: var(--text-dim);
   padding: 11px 14px;
+  min-height: 44px;
   border-radius: 10px;
   font-size: 0.88rem;
   font-weight: 600;
@@ -576,7 +614,7 @@ table.data-table th { color: var(--text-dim); font-weight: 600; font-size: 0.72r
 }
 .super-nav button:hover { background: rgba(255, 255, 255, 0.04); color: var(--text); }
 .super-nav button.active {
-  background: linear-gradient(135deg, rgba(205, 168, 106, 0.22), rgba(138, 127, 214, 0.18));
+  background: linear-gradient(135deg, rgba(240, 184, 0, 0.22), rgba(34, 211, 238, 0.18));
   border-color: var(--border-strong);
   color: var(--text);
 }
@@ -586,6 +624,40 @@ table.data-table th { color: var(--text-dim); font-weight: 600; font-size: 0.72r
 .super-main-header { margin-bottom: 20px; }
 .super-main-header h1 { font-size: 1.6rem; }
 .super-main-body { max-width: 1180px; }
+
+/* Mobile/tablet: the fixed 240px sidebar squeezed the whole app sideways —
+   collapse it into a sticky top bar with a horizontally scrolling nav
+   instead of a column that never fits. */
+@media (max-width: 860px) {
+  .super-sidebar {
+    width: 100%;
+    height: auto;
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+    padding: 12px 14px;
+    gap: 8px;
+    position: sticky;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    z-index: 25;
+  }
+  .super-brand { padding: 0; flex: 0 0 auto; font-size: 1rem; }
+  .super-brand-sub { display: none; }
+  .super-nav {
+    flex: 1 1 100%;
+    flex-direction: row;
+    overflow-x: auto;
+    gap: 6px;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .super-nav::-webkit-scrollbar { display: none; }
+  .super-nav button { flex: 0 0 auto; white-space: nowrap; }
+  .super-logout { margin: 0 0 0 auto; width: auto; flex: 0 0 auto; }
+  .super-main { padding: 20px 16px 40px; }
+  .super-main-header h1 { font-size: 1.3rem; }
+}
 
 .desktop-grid {
   display: grid;
