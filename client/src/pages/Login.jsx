@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext.jsx';
-import { ApiError } from '../lib/api.js';
+import { ApiError } from '../lib/supabase.js';
 
 const ROLES = [
   { key: 'player', label: 'Team' },
