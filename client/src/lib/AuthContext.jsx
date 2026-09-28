@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { supabase, getToken, setToken, call } from './supabase.js';
+import { supabase, getToken, setToken, call, throwIfLoginError } from './supabase.js';
 
 const AuthContext = createContext(null);
 
@@ -34,7 +34,7 @@ export function AuthProvider({ children }) {
   }, [refresh]);
 
   const login = useCallback(async (loginId, password, role) => {
-    const result = await call(supabase.rpc('fn_login', { p_role: role, p_login_id: loginId, p_password: password }));
+    const result = throwIfLoginError(await call(supabase.rpc('fn_login', { p_role: role, p_login_id: loginId, p_password: password })));
     setToken(result.token);
     const me = { role: result.role, teamId: result.teamId };
     setUser(me);

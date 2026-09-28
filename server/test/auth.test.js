@@ -1,6 +1,7 @@
-import { test, describe } from 'node:test';
+import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { Session, loadCredentials, pick } from './helpers.js';
+import { query, deleteTestTeam, closePool } from './db.js';
 
 const creds = loadCredentials();
 
@@ -67,5 +68,43 @@ describe('auth (fn_login / fn_auth_user)', () => {
     // back in once more so this test doesn't itself invalidate a sibling
     // test file's already-cached session for the same account.
     await first.login('player', player.loginId, player.password);
+  });
+
+  describe('login rate limiting (fn_login / login_attempts)', () => {
+    let superAdmin, team;
+
+    before(async () => {
+      superAdmin = new Session();
+      const sa = pick(creds, 'super_admin');
+      await superAdmin.login('super_admin', sa.loginId, sa.password);
+      team = await superAdmin.rpc('fn_super_add_team', { p_team_code: `TEST-RATELIMIT-${Date.now()}` });
+    });
+
+    after(async () => {
+      await query('delete from login_attempts where login_id = $1', [team.teamCode]);
+      await deleteTestTeam(team.teamId);
+      await closePool();
+    });
+
+    test('8 wrong passwords lock the account out, even with the right password', async () => {
+      for (let i = 0; i < 8; i++) {
+        await assert.rejects(() => new Session().login('player', team.teamCode, 'wrong'), (err) => err.message === 'INVALID_CREDENTIALS');
+      }
+      await assert.rejects(
+        () => new Session().login('player', team.teamCode, team.password),
+        (err) => err.message === 'RATE_LIMITED'
+      );
+    });
+
+    test('a successful login clears the failure history', async () => {
+      await query('delete from login_attempts where login_id = $1', [team.teamCode]);
+      for (let i = 0; i < 5; i++) {
+        await assert.rejects(() => new Session().login('player', team.teamCode, 'wrong'));
+      }
+      const s = new Session();
+      await s.login('player', team.teamCode, team.password); // under the threshold, so this still succeeds
+      const { rows } = await query('select count(*) from login_attempts where login_id = $1', [team.teamCode]);
+      assert.equal(Number(rows[0].count), 0);
+    });
   });
 });

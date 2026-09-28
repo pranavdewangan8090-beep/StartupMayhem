@@ -57,6 +57,10 @@ export class Session {
 
   async login(role, loginId, password) {
     const result = await this.rpc('fn_login', { p_role: role, p_login_id: loginId, p_password: password });
+    // fn_login reports credential/rate-limit failures by returning
+    // {error: CODE} normally rather than raising, so its bookkeeping insert
+    // survives (see server/sql/015) — mirrors throwIfLoginError client-side.
+    if (result?.error) throw new ApiError(result.error, null);
     this.token = result.token;
     this.role = result.role;
     this.teamId = result.teamId;

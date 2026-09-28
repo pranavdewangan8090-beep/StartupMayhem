@@ -30,11 +30,12 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 });
 
 // A RAISE EXCEPTION '<CODE>' inside a Postgres function comes back from
-// PostgREST as error.message = '<CODE>' verbatim — this mirrors
-// server/src/lib/errors.js's CODE_MAP so the client shows the same
-// player-safe copy the old Express API used to.
+// PostgREST as error.message = '<CODE>' verbatim (fn_login is the one
+// exception — see throwIfLoginError below) — this mirrors the player-safe
+// copy the old Express API used to show.
 const CODE_MAP = {
   INVALID_CREDENTIALS: 'Wrong ID or password.',
+  RATE_LIMITED: 'Too many login attempts. Wait a few minutes and try again.',
   DUPLICATE_REQUEST: 'This action was already submitted.',
   TEAM_NOT_FOUND: 'Team not found.',
   BAD_CATEGORY: 'Unknown card category.',
@@ -76,6 +77,15 @@ export async function call(promise) {
     throw new ApiError(CODE_MAP[code] || error.message, code);
   }
   return data;
+}
+
+/** fn_login reports a credential/rate-limit failure by returning
+ * {error: CODE} normally rather than raising (see server/sql/015 for why),
+ * so it can't go through call()'s error-branch above — this throws from
+ * that shape instead, mapped through the same CODE_MAP. */
+export function throwIfLoginError(result) {
+  if (result?.error) throw new ApiError(CODE_MAP[result.error] || result.error, result.error);
+  return result;
 }
 
 export function newRequestId() {
