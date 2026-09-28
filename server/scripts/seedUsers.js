@@ -43,7 +43,6 @@ async function main() {
       const teamCode = `T${String(i).padStart(2, '0')}`;
       const marketId = await pickRandomCardId(client, 'market');
       const customerId = await pickRandomCardId(client, 'customer');
-      const problemId = await pickRandomCardId(client, 'problem');
       const missionId = await pickRandomCardId(client, 'mission');
       const resourcesId = await pickRandomCardId(client, 'resources');
 
@@ -55,10 +54,10 @@ async function main() {
 
       const { rows: teamRows } = await client.query(
         `insert into teams (team_code, cash_l, customers, reputation, innovation,
-           market_card_id, customer_card_id, problem_card_id, mission_card_id, resources_card_id)
-         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) returning id`,
+           market_card_id, customer_card_id, mission_card_id, resources_card_id)
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9) returning id`,
         [teamCode, r.start_cash_l, r.start_customers, r.start_reputation, r.start_innovation,
-         marketId, customerId, problemId, missionId, resourcesId]
+         marketId, customerId, missionId, resourcesId]
       );
       const teamId = teamRows[0].id;
 

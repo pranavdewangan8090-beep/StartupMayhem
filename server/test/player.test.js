@@ -27,7 +27,7 @@ after(async () => {
 test('GET /player/cards returns all 5 identity card categories with full detail', { skip }, async () => {
   const { status, body } = await team.playerSession.get('/player/cards');
   assert.equal(status, 200);
-  for (const cat of ['market', 'customer', 'problem', 'mission', 'resources']) {
+  for (const cat of ['market', 'customer', 'mission', 'resources']) {
     assert.ok(body[`${cat}_id`], `missing ${cat}_id`);
     assert.ok(body[`${cat}_title`], `missing ${cat}_title`);
     assert.ok(body[`${cat}_desc`], `missing ${cat}_desc`);
@@ -67,7 +67,7 @@ test('replacement limit: the 4th replacement of the same team is rejected', { sk
   // 1 replacement already used by the earlier test in this file; use up the
   // remaining 2, then confirm the 4th is refused.
   await team.playerSession.post('/player/cards/replace', { category: 'customer', requestId: requestId() });
-  await team.playerSession.post('/player/cards/replace', { category: 'problem', requestId: requestId() });
+  await team.playerSession.post('/player/cards/replace', { category: 'resources', requestId: requestId() });
   const { status, body } = await team.playerSession.post('/player/cards/replace', { category: 'mission', requestId: requestId() });
   assert.equal(status, 403);
   assert.equal(body.error, 'REPLACEMENT_LIMIT_REACHED');

@@ -35,7 +35,7 @@ after(async () => {
 test('GET /action-cards/catalog lists all active cards with category/name/effect', { skip }, async () => {
   assert.ok(catalog.length > 0);
   for (const c of catalog) {
-    assert.ok(['self_help', 'attack', 'deal', 'special'].includes(c.category));
+    assert.ok(['action', 'deal', 'special'].includes(c.category));
     assert.ok(c.name);
     assert.ok(c.effect_text);
   }
@@ -49,73 +49,60 @@ test('GET /action-cards/teams lists other active teams, excluding self', { skip 
 });
 
 test('requesting an action card adds it to hand; requesting the same card twice is rejected', { skip }, async () => {
-  const selfHelp = catalog.find((c) => c.category === 'self_help');
-  assert.ok(selfHelp, 'seed data should include at least one self_help card');
+  const actionCard = catalog.find((c) => c.category === 'action');
+  assert.ok(actionCard, 'seed data should include at least one action card');
 
-  const first = await teamA.playerSession.post('/action-cards/request', { actionCardId: selfHelp.id, requestId: requestId() });
+  const first = await teamA.playerSession.post('/action-cards/request', { actionCardId: actionCard.id, requestId: requestId() });
   assert.equal(first.status, 200);
   assert.equal(first.body.status, 'held');
 
-  const dup = await teamA.playerSession.post('/action-cards/request', { actionCardId: selfHelp.id, requestId: requestId() });
+  const dup = await teamA.playerSession.post('/action-cards/request', { actionCardId: actionCard.id, requestId: requestId() });
   assert.equal(dup.status, 409);
   assert.equal(dup.body.error, 'ALREADY_HAVE_CARD');
 
   const hand = await teamA.playerSession.get('/action-cards/hand');
-  assert.ok(hand.body.some((c) => c.action_card_id === selfHelp.id));
+  assert.ok(hand.body.some((c) => c.action_card_id === actionCard.id));
 });
 
-test('R2 request cap: a 5th card request is rejected once 4 are held', { skip }, async () => {
-  const remaining = catalog.filter((c) => c.category !== 'self_help').slice(0, 4);
-  for (const c of remaining) {
-    await teamB.playerSession.post('/action-cards/request', { actionCardId: c.id, requestId: requestId() });
-  }
+test('one card per category: a 2nd card from an already-held category is rejected', { skip }, async () => {
+  const otherAction = catalog.find((c) => c.category === 'action' && !catalog.every((x) => x.id === c.id));
+  const secondAction = catalog.filter((c) => c.category === 'action')[1];
+  assert.ok(secondAction, 'seed data should include a 2nd action card');
+
+  const { status, body } = await teamA.playerSession.post('/action-cards/request', { actionCardId: secondAction.id, requestId: requestId() });
+  assert.equal(status, 409);
+  assert.equal(body.error, 'CATEGORY_ALREADY_TAKEN');
+});
+
+test('R2 request cap: a 4th card request is rejected once 3 are held (one per category)', { skip }, async () => {
+  const dealCard = catalog.find((c) => c.category === 'deal');
+  const specialCard = catalog.find((c) => c.category === 'special');
+  await teamB.playerSession.post('/action-cards/request', { actionCardId: catalog.find((c) => c.category === 'action').id, requestId: requestId() });
+  await teamB.playerSession.post('/action-cards/request', { actionCardId: dealCard.id, requestId: requestId() });
+  await teamB.playerSession.post('/action-cards/request', { actionCardId: specialCard.id, requestId: requestId() });
+
   const hand = await teamB.playerSession.get('/action-cards/hand');
-  assert.equal(hand.body.length, 4);
+  assert.equal(hand.body.length, 3);
 
-  const overflow = catalog.find((c) => !remaining.includes(c));
+  // every category is now taken, so this should fail on CATEGORY_ALREADY_TAKEN
+  // before it would even reach the count check — both prove the 3-card cap holds
+  const overflow = catalog.find((c) => c.category === 'action' && c.id !== catalog.find((x) => x.category === 'action').id);
   const { status, body } = await teamB.playerSession.post('/action-cards/request', { actionCardId: overflow.id, requestId: requestId() });
-  assert.equal(status, 403);
-  assert.equal(body.error, 'R2_LIMIT_REACHED');
+  assert.equal(status, 409);
+  assert.equal(body.error, 'CATEGORY_ALREADY_TAKEN');
 });
 
-test('playing a self_help/special card applies its effect and marks it used', { skip }, async () => {
+test('playing an action/special card applies its effect and marks it used', { skip }, async () => {
   const hand = await teamA.playerSession.get('/action-cards/hand');
-  const held = hand.body.find((c) => c.status === 'held' && (c.category === 'self_help' || c.category === 'special'));
-  assert.ok(held, 'team A should still hold its self_help card');
+  const held = hand.body.find((c) => c.status === 'held' && (c.category === 'action' || c.category === 'special'));
+  assert.ok(held, 'team A should still hold its action card');
 
-  const before1 = await teamA.playerSession.get('/player/status');
   const { status, body } = await teamA.playerSession.post('/action-cards/play/self', { teamActionCardId: held.id, requestId: requestId() });
   assert.equal(status, 200);
   assert.ok(body.before && body.after);
 
   const handAfter = await teamA.playerSession.get('/action-cards/hand');
   assert.equal(handAfter.body.find((c) => c.id === held.id).status, 'used');
-});
-
-test('playing an attack card affects both the player and the named target', { skip }, async () => {
-  const attackCard = catalog.find((c) => c.category === 'attack');
-  assert.ok(attackCard);
-  await teamA.playerSession.post('/action-cards/request', { actionCardId: attackCard.id, requestId: requestId() });
-  const hand = await teamA.playerSession.get('/action-cards/hand');
-  const held = hand.body.find((c) => c.action_card_id === attackCard.id && c.status === 'held');
-
-  const { status, body } = await teamA.playerSession.post('/action-cards/play/attack', {
-    teamActionCardId: held.id, targetTeamId: teamB.teamId, requestId: requestId(),
-  });
-  assert.equal(status, 200);
-  assert.ok(body.self_after && body.target_after);
-});
-
-test('attack cannot target your own team', { skip }, async () => {
-  const hand = await teamB.playerSession.get('/action-cards/hand');
-  const heldAttack = hand.body.find((c) => c.category === 'attack' && c.status === 'held');
-  assert.ok(heldAttack, 'team B should hold an unused attack card from the R2-cap test');
-
-  const { status, body } = await teamB.playerSession.post('/action-cards/play/attack', {
-    teamActionCardId: heldAttack.id, targetTeamId: teamB.teamId, requestId: requestId(),
-  });
-  assert.equal(status, 400);
-  assert.equal(body.error, 'CANNOT_TARGET_SELF');
 });
 
 test('a deal card proposes to a partner, who can accept it', { skip }, async () => {

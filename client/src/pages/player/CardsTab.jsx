@@ -7,7 +7,6 @@ import Modal from '../../components/Modal.jsx';
 const CATS = [
   { key: 'market', label: 'Market' },
   { key: 'customer', label: 'Customer' },
-  { key: 'problem', label: 'Problem' },
   { key: 'mission', label: 'Secret Mission' },
   { key: 'resources', label: 'Starting Resources' },
 ];

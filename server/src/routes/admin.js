@@ -19,11 +19,10 @@ router.get(
     const { rows } = await pool.query(
       `select t.id, t.team_code, t.cash_l, t.customers, t.reputation, t.innovation,
               t.replacements_used, t.mission_completed,
-              mk.title as market_title, cu.title as customer_title, pr.title as problem_title
+              mk.title as market_title, cu.title as customer_title
        from teams t
        join identity_cards mk on mk.id = t.market_card_id
        join identity_cards cu on cu.id = t.customer_card_id
-       join identity_cards pr on pr.id = t.problem_card_id
        where t.is_active
        order by t.team_code`
     );

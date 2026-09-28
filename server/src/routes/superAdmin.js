@@ -21,7 +21,7 @@ function randomPassword() {
 // Toggles
 // ---------------------------------------------------------------------------
 const toggleSchema = z.object({
-  key: z.enum(['r1_replace_open', 'r2_selection_open', 'marketplace_open', 'card_play_open']),
+  key: z.enum(['r1_replace_open', 'r2_selection_open', 'card_play_open']),
   value: z.boolean(),
 });
 router.post(
@@ -62,16 +62,15 @@ router.post(
       };
       const market = await pick('market');
       const customer = await pick('customer');
-      const problem = await pick('problem');
       const mission = await pick('mission');
       const resources = await pick('resources');
 
       const { rows: teamRows } = await client.query(
         `insert into teams (team_code, cash_l, customers, reputation, innovation,
-           market_card_id, customer_card_id, problem_card_id, mission_card_id, resources_card_id)
-         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) returning id`,
+           market_card_id, customer_card_id, mission_card_id, resources_card_id)
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9) returning id`,
         [req.body.teamCode, resources.start_cash_l, resources.start_customers, resources.start_reputation,
-         resources.start_innovation, market.id, customer.id, problem.id, mission.id, resources.id]
+         resources.start_innovation, market.id, customer.id, mission.id, resources.id]
       );
       const teamId = teamRows[0].id;
 

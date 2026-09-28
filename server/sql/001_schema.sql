@@ -21,7 +21,7 @@ create extension if not exists pgcrypto;
 -- ---------------------------------------------------------------------------
 create table identity_cards (
   id               serial primary key,
-  category         text not null check (category in ('market','customer','problem','mission','resources')),
+  category         text not null check (category in ('market','customer','mission','resources')),
   number           smallint not null check (number between 1 and 20),
   title            text not null,
   tagline          text not null default '',
@@ -36,15 +36,17 @@ create table identity_cards (
   unique (category, number)
 );
 
+-- 3 categories, one card of each per team: action (self-help style boosts),
+-- deal (two-team pacts), special (AI-flavored boosts). No attack cards and no
+-- marketplace/trading — a team's hand is exactly one of each, held for the game.
 create table action_cards (
   id             serial primary key,
-  category       text not null check (category in ('self_help','attack','deal','special')),
+  category       text not null check (category in ('action', 'deal', 'special')),
   name           text not null unique,
   description    text not null default '',
   effect_text    text not null default '',
   -- effect objects: {"cash_l":int,"customers":int,"reputation":int,"innovation":int}
   self_effect    jsonb not null default '{}'::jsonb,  -- applied to the player of the card
-  target_effect  jsonb,                               -- attack cards: applied to the target team
   partner_effect jsonb,                               -- deal cards: applied to the partner team
   is_active      boolean not null default true
 );
@@ -94,7 +96,6 @@ create table teams (
   decision_points    int not null default 0,
   market_card_id     int not null references identity_cards(id),
   customer_card_id   int not null references identity_cards(id),
-  problem_card_id    int not null references identity_cards(id),
   mission_card_id    int not null references identity_cards(id),
   resources_card_id  int not null references identity_cards(id),
   mission_completed  boolean not null default false,
@@ -143,7 +144,6 @@ create table game_state (
   id                      smallint primary key default 1 check (id = 1),
   r1_replace_open         boolean not null default true,
   r2_selection_open       boolean not null default false,
-  marketplace_open        boolean not null default false,
   card_play_open          boolean not null default true,
   current_mayhem_event_id int references mayhem_events(id),
   updated_at              timestamptz not null default now()
@@ -151,15 +151,16 @@ create table game_state (
 insert into game_state (id) values (1);
 
 -- ---------------------------------------------------------------------------
--- Action cards held by teams
+-- Action cards held by teams: exactly one per category (action/deal/special),
+-- no listing/trading — a card is held until played.
 -- ---------------------------------------------------------------------------
 create table team_action_cards (
   id              uuid primary key default gen_random_uuid(),
   team_id         int not null references teams(id) on delete cascade,
   action_card_id  int not null references action_cards(id),
-  -- held: usable | listed: on marketplace (not usable) | pending: deal awaiting partner | used: consumed
-  status          text not null default 'held' check (status in ('held','listed','pending','used')),
-  source          text not null check (source in ('r2','trade','admin')),
+  -- held: usable | pending: deal awaiting partner | used: consumed
+  status          text not null default 'held' check (status in ('held','pending','used')),
+  source          text not null check (source in ('r2','admin')),
   request_id      uuid unique,
   acquired_at     timestamptz not null default now(),
   used_at         timestamptz
@@ -168,46 +169,19 @@ create index team_action_cards_team on team_action_cards(team_id);
 -- R2: a team may request each action card at most once
 create unique index team_action_cards_r2_unique on team_action_cards(team_id, action_card_id) where source = 'r2';
 
--- Every play of an action card (attack, deal, self-help) — tracks in-flight
--- deal state (pending/applied/rejected/cancelled), not a historical log.
+-- Every play of an action card (deal or self-play) — tracks in-flight deal
+-- state (pending/applied/rejected/cancelled), not a historical log.
 create table card_plays (
   id                   bigserial primary key,
   team_action_card_id  uuid not null unique references team_action_cards(id) on delete cascade,
   action_card_id       int not null references action_cards(id),
   team_id              int not null references teams(id) on delete cascade,
-  other_team_id        int references teams(id) on delete cascade,   -- attack target or deal partner
+  other_team_id        int references teams(id) on delete cascade,   -- deal partner
   status               text not null check (status in ('applied','pending','rejected','cancelled')),
   request_id           uuid not null unique,
   created_at           timestamptz not null default now()
 );
 create index card_plays_other on card_plays(other_team_id);
-
--- ---------------------------------------------------------------------------
--- Marketplace: 1 card for 1 card, no money
--- ---------------------------------------------------------------------------
-create table market_listings (
-  id                   bigserial primary key,
-  team_action_card_id  uuid not null references team_action_cards(id) on delete cascade,
-  seller_team_id       int not null references teams(id) on delete cascade,
-  status               text not null default 'active' check (status in ('active','sold','unlisted')),
-  request_id           uuid not null unique,
-  created_at           timestamptz not null default now(),
-  closed_at            timestamptz
-);
-create unique index market_listings_one_active on market_listings(team_action_card_id) where status = 'active';
-
-create table trade_offers (
-  id               bigserial primary key,
-  listing_id       bigint not null references market_listings(id) on delete cascade,
-  buyer_team_id    int not null references teams(id) on delete cascade,
-  offered_card_id  uuid not null references team_action_cards(id) on delete cascade,
-  status           text not null default 'pending' check (status in ('pending','accepted','rejected','withdrawn','void')),
-  request_id       uuid not null unique,
-  created_at       timestamptz not null default now(),
-  resolved_at      timestamptz
-);
-create unique index trade_offers_one_pending on trade_offers(listing_id, buyer_team_id) where status = 'pending';
-create index trade_offers_offered_card on trade_offers(offered_card_id) where status = 'pending';
 
 -- ---------------------------------------------------------------------------
 -- Lock down the public Supabase API: only the server (postgres role) gets in.

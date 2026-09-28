@@ -20,7 +20,6 @@ router.get(
       `select
          mk.id as market_id, mk.title as market_title, mk.tagline as market_tagline, mk.description as market_desc, mk.event_tags as market_tags,
          cu.id as customer_id, cu.title as customer_title, cu.tagline as customer_tagline, cu.description as customer_desc, cu.event_tags as customer_tags,
-         pr.id as problem_id, pr.title as problem_title, pr.tagline as problem_tagline, pr.description as problem_desc, pr.event_tags as problem_tags,
          ms.id as mission_id, ms.title as mission_title, ms.tagline as mission_tagline, ms.description as mission_desc, ms.event_tags as mission_tags, ms.bonus_points,
          rc.id as resources_id, rc.title as resources_title, rc.tagline as resources_tagline, rc.description as resources_desc, rc.event_tags as resources_tags,
          rc.start_cash_l, rc.start_customers, rc.start_reputation, rc.start_innovation,
@@ -28,7 +27,6 @@ router.get(
        from teams t
        join identity_cards mk on mk.id = t.market_card_id
        join identity_cards cu on cu.id = t.customer_card_id
-       join identity_cards pr on pr.id = t.problem_card_id
        join identity_cards ms on ms.id = t.mission_card_id
        join identity_cards rc on rc.id = t.resources_card_id
        where t.id = $1`,
@@ -39,7 +37,7 @@ router.get(
 );
 
 const replaceSchema = z.object({
-  category: z.enum(['market', 'customer', 'problem', 'mission', 'resources']),
+  category: z.enum(['market', 'customer', 'mission', 'resources']),
   requestId: z.string().uuid(),
 });
 
@@ -83,16 +81,13 @@ router.get(
       `select extract(epoch from gs.updated_at)::bigint as game_version,
               (select count(*) from team_action_cards where team_id = $1 and source='r2') as action_card_count,
               (select count(*) from card_plays where other_team_id = $1 and status = 'pending') as pending_deal_offers_in,
-              (select count(*) from trade_offers to2 join market_listings ml on ml.id = to2.listing_id
-                 where ml.seller_team_id = $1 and to2.status = 'pending') as pending_trade_offers_in,
-              gs.r1_replace_open, gs.r2_selection_open, gs.marketplace_open, gs.card_play_open
+              gs.r1_replace_open, gs.r2_selection_open, gs.card_play_open
        from game_state gs where gs.id = 1`,
       [req.user.teamId]
     );
     const row = rows[0];
     const version = Number(row.game_version)
-      + Number(row.action_card_count) * 10_000_000_000 + Number(row.pending_deal_offers_in) * 100_000_000_000
-      + Number(row.pending_trade_offers_in) * 1_000_000_000_000;
+      + Number(row.action_card_count) * 10_000_000_000 + Number(row.pending_deal_offers_in) * 100_000_000_000;
     if (version === clientVersion) {
       return res.status(204).end();
     }

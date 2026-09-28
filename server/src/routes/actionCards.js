@@ -10,10 +10,7 @@ import { h } from '../lib/errors.js';
 const router = Router();
 router.use(requireAuth, requireRole('player'));
 
-// Full catalog (60 cards), for the R2 selection portal. Cards already listed
-// on the marketplace by ANY team are flagged so the client can grey them out
-// where relevant, per the "black shade, not usable" rule for the OWNER's view
-// (handled below in /hand); here it's just catalog metadata.
+// Full catalog (45 cards, 15 per category), for the R2 selection portal.
 router.get(
   '/catalog',
   h(async (req, res) => {
@@ -38,8 +35,8 @@ router.post(
   })
 );
 
-// The team's own 4 (max) action cards, with status (held/listed/pending/used)
-// so the UI can grey out anything not currently usable.
+// The team's own 3 (max, one per category) action cards, with status
+// (held/pending/used) so the UI can grey out anything not currently usable.
 router.get(
   '/hand',
   h(async (req, res) => {
@@ -55,8 +52,8 @@ router.get(
   })
 );
 
-// Attack targets and deal partners need a simple team list (id + code only —
-// never resources or decision points here).
+// Deal partners need a simple team list (id + code only — never resources
+// or decision points here).
 router.get(
   '/teams',
   h(async (req, res) => {
@@ -75,23 +72,6 @@ router.post(
   h(async (req, res) => {
     const { rows } = await pool.query('select fn_play_self_card($1, $2, $3) as result', [
       req.user.teamId, req.body.teamActionCardId, req.body.requestId,
-    ]);
-    res.json(rows[0].result);
-  })
-);
-
-const playAttackSchema = z.object({
-  teamActionCardId: z.string().uuid(),
-  targetTeamId: z.number().int().positive(),
-  requestId: z.string().uuid(),
-});
-router.post(
-  '/play/attack',
-  actionLimiter,
-  validate(playAttackSchema),
-  h(async (req, res) => {
-    const { rows } = await pool.query('select fn_play_attack_card($1, $2, $3, $4) as result', [
-      req.user.teamId, req.body.teamActionCardId, req.body.targetTeamId, req.body.requestId,
     ]);
     res.json(rows[0].result);
   })

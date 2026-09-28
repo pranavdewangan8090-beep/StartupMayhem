@@ -3,14 +3,15 @@ import { api, newRequestId, ApiError } from '../../lib/api.js';
 import { useToast } from '../../lib/ToastContext.jsx';
 import Modal from '../../components/Modal.jsx';
 
-const CAT_LABEL = { self_help: 'Self Help', attack: 'Attack', deal: 'Deal', special: 'Special / AI' };
+const CAT_LABEL = { action: 'Action Card', deal: 'Deal', special: 'Special / AI' };
+const CATEGORY_ORDER = ['action', 'deal', 'special'];
 
 export default function ActionCardsTab({ gameState, onChanged }) {
   const [catalog, setCatalog] = useState([]);
   const [hand, setHand] = useState([]);
   const [teams, setTeams] = useState([]);
   const [incomingDeals, setIncomingDeals] = useState([]);
-  const [playTarget, setPlayTarget] = useState(null); // { card, mode: 'attack'|'deal' }
+  const [playTarget, setPlayTarget] = useState(null); // { card }
   const [selectedTeamId, setSelectedTeamId] = useState('');
   const [busy, setBusy] = useState(false);
   const toast = useToast();
@@ -46,7 +47,7 @@ export default function ActionCardsTab({ gameState, onChanged }) {
   async function playSelf(teamActionCardId) {
     setBusy(true);
     try {
-      const result = await api.post('/action-cards/play/self', { teamActionCardId, requestId: newRequestId() });
+      await api.post('/action-cards/play/self', { teamActionCardId, requestId: newRequestId() });
       toast('Card played!', 'success');
       await loadAll();
       onChanged?.();
@@ -57,25 +58,16 @@ export default function ActionCardsTab({ gameState, onChanged }) {
     }
   }
 
-  async function confirmTargeted() {
+  async function confirmDeal() {
     if (!selectedTeamId) return;
     setBusy(true);
     try {
-      if (playTarget.mode === 'attack') {
-        await api.post('/action-cards/play/attack', {
-          teamActionCardId: playTarget.card.id,
-          targetTeamId: Number(selectedTeamId),
-          requestId: newRequestId(),
-        });
-        toast('Attack launched!', 'success');
-      } else {
-        await api.post('/action-cards/play/deal', {
-          teamActionCardId: playTarget.card.id,
-          partnerTeamId: Number(selectedTeamId),
-          requestId: newRequestId(),
-        });
-        toast('Deal proposed — waiting for their response.', 'success');
-      }
+      await api.post('/action-cards/play/deal', {
+        teamActionCardId: playTarget.card.id,
+        partnerTeamId: Number(selectedTeamId),
+        requestId: newRequestId(),
+      });
+      toast('Deal proposed — waiting for their response.', 'success');
       setPlayTarget(null);
       setSelectedTeamId('');
       await loadAll();
@@ -101,10 +93,16 @@ export default function ActionCardsTab({ gameState, onChanged }) {
     }
   }
 
-  const heldIds = new Set(hand.map((c) => c.action_card_id));
   const r2Hand = hand.filter((c) => c.source === 'r2');
   const heldCategories = new Set(r2Hand.map((c) => c.category));
-  const canRequestMore = r2Hand.length < 4;
+  const canRequestMore = r2Hand.length < 3;
+
+  // once a team has a card from a category, every other card in that
+  // category disappears from the catalog entirely — not just this one card
+  const groups = CATEGORY_ORDER
+    .filter((cat) => !heldCategories.has(cat))
+    .map((cat) => ({ cat, cards: catalog.filter((c) => c.category === cat) }))
+    .filter((g) => g.cards.length > 0);
 
   return (
     <div>
@@ -127,25 +125,22 @@ export default function ActionCardsTab({ gameState, onChanged }) {
       )}
 
       <div className="card-surface section">
-        <h2>Your Hand ({hand.filter((c) => c.status !== 'used').length})</h2>
-        {hand.length === 0 && <p>You haven't requested any action cards yet.</p>}
+        <h2>Your Hand ({hand.filter((c) => c.status !== 'used').length}/3)</h2>
+        {hand.length === 0 && <p>You haven't picked any action cards yet.</p>}
         <div className="action-grid">
           {hand.map((c) => (
-            <div key={c.id} className={`action-card-tile cat-${c.category} ${c.status === 'listed' ? 'listed' : ''}`}>
+            <div key={c.id} className={`action-card-tile cat-${c.category}`}>
               <span className={`pill cat-${c.category}`}>{CAT_LABEL[c.category]}</span>
               <div className="name" style={{ marginTop: 6 }}>{c.name}</div>
               <div className="effect">{c.effect_text}</div>
-              {c.status === 'listed' && <p className="warning-text">On the marketplace — not usable.</p>}
               {c.status === 'pending' && <p>Awaiting response…</p>}
               {c.status === 'used' && <p>Already used.</p>}
               {c.status === 'held' && gameState?.card_play_open && (
                 <div className="row">
-                  {c.category === 'self_help' || c.category === 'special' ? (
+                  {c.category === 'action' || c.category === 'special' ? (
                     <button className="btn btn-primary btn-sm" disabled={busy} onClick={() => playSelf(c.id)}>Play</button>
-                  ) : c.category === 'attack' ? (
-                    <button className="btn btn-danger btn-sm" disabled={busy} onClick={() => setPlayTarget({ card: c, mode: 'attack' })}>Attack…</button>
                   ) : (
-                    <button className="btn btn-ghost btn-sm" disabled={busy} onClick={() => setPlayTarget({ card: c, mode: 'deal' })}>Propose Deal…</button>
+                    <button className="btn btn-ghost btn-sm" disabled={busy} onClick={() => setPlayTarget({ card: c })}>Propose Deal…</button>
                   )}
                 </div>
               )}
@@ -158,24 +153,31 @@ export default function ActionCardsTab({ gameState, onChanged }) {
       {gameState?.r2_selection_open ? (
         <div className="card-surface section">
           <h2>Action Card Catalog</h2>
-          <p>Pick 4 cards total — one from each category (Self Help, Attack, Deal, Special/AI).</p>
-          <div className="catalog-grid">
-            {catalog.map((c) => {
-              const alreadyHaveThis = heldIds.has(c.id);
-              const categoryTaken = heldCategories.has(c.category) && !alreadyHaveThis;
-              const disabled = busy || !canRequestMore || alreadyHaveThis || categoryTaken;
-              return (
-                <div key={c.id} className="catalog-tile" style={{ opacity: alreadyHaveThis || categoryTaken ? 0.5 : 1 }}>
-                  <span className={`pill cat-${c.category}`}>{CAT_LABEL[c.category]}</span>
-                  <div className="name">{c.name}</div>
-                  <div className="effect">{c.effect_text}</div>
-                  <button className="btn btn-primary btn-sm" disabled={disabled} onClick={() => request(c.id)}>
-                    {alreadyHaveThis ? 'Already requested' : categoryTaken ? 'Category already picked' : 'Make Request'}
-                  </button>
+          <p>Pick one card from each category — 3 total.</p>
+          {groups.length === 0 ? (
+            <p className="success-text">You've picked all 3 of your cards.</p>
+          ) : (
+            <div className={`catalog-pyramid groups-${groups.length}`}>
+              {groups.map((g) => (
+                <div key={g.cat} className="catalog-group">
+                  <div className="catalog-group-header">
+                    <span className={`pill cat-${g.cat}`}>{CAT_LABEL[g.cat]}</span>
+                  </div>
+                  <div className="catalog-grid">
+                    {g.cards.map((c) => (
+                      <div key={c.id} className="catalog-tile">
+                        <div className="name">{c.name}</div>
+                        <div className="effect">{c.effect_text}</div>
+                        <button className="btn btn-primary btn-sm" disabled={busy || !canRequestMore} onClick={() => request(c.id)}>
+                          Make Request
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              );
-            })}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       ) : (
         <div className="card-surface section">
@@ -186,7 +188,7 @@ export default function ActionCardsTab({ gameState, onChanged }) {
 
       {playTarget && (
         <Modal onClose={() => setPlayTarget(null)}>
-          <h2>{playTarget.mode === 'attack' ? 'Choose a target' : 'Choose a partner'}</h2>
+          <h2>Choose a partner</h2>
           <p>{playTarget.card.name}</p>
           <div className="field">
             <select value={selectedTeamId} onChange={(e) => setSelectedTeamId(e.target.value)}>
@@ -194,7 +196,7 @@ export default function ActionCardsTab({ gameState, onChanged }) {
               {teams.map((t) => <option key={t.id} value={t.id}>{t.team_code}</option>)}
             </select>
           </div>
-          <button className="btn btn-primary btn-block" disabled={busy || !selectedTeamId} onClick={confirmTargeted}>
+          <button className="btn btn-primary btn-block" disabled={busy || !selectedTeamId} onClick={confirmDeal}>
             Confirm
           </button>
         </Modal>

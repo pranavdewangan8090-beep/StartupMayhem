@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 
-export const CARD_CATEGORIES = ['market', 'customer', 'problem', 'mission', 'resources'];
+export const CARD_CATEGORIES = ['market', 'customer', 'mission', 'resources'];
 
 function storageKey(teamId) {
   return `sm_revealed_cards_${teamId ?? 'unknown'}`;
@@ -21,7 +21,7 @@ export function areAllCardsRevealed(revealed) {
 }
 
 /**
- * Tracks which of the 5 starting-card categories a team has flipped face-up
+ * Tracks which of the 4 starting-card categories a team has flipped face-up
  * at least once, persisted in localStorage so it survives switching tabs or
  * reloading the page — a card that's already been revealed never asks the
  * player to flip it again. Resets only if they log in fresh in a new browser.

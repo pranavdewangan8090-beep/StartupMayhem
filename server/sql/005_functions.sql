@@ -6,9 +6,9 @@
 --
 -- No history/log tables: state lives only on teams, mayhems and team_action_cards.
 -- Duplicate-submit protection is kept only where a functional row already exists
--- to hold it (team_action_cards, card_plays, market_listings, trade_offers);
--- one-off admin actions (resource/points adjustments, identity replacements) are
--- applied directly with no dedup bookkeeping.
+-- to hold it (team_action_cards, card_plays); one-off admin actions (resource/
+-- points adjustments, identity replacements) are applied directly with no
+-- dedup bookkeeping.
 
 create extension if not exists pgcrypto;
 
@@ -57,7 +57,6 @@ begin
   case p_category
     when 'market' then v_old_id := v_team.market_card_id;
     when 'customer' then v_old_id := v_team.customer_card_id;
-    when 'problem' then v_old_id := v_team.problem_card_id;
     when 'mission' then v_old_id := v_team.mission_card_id;
     when 'resources' then v_old_id := v_team.resources_card_id;
     else raise exception 'BAD_CATEGORY';
@@ -71,7 +70,6 @@ begin
   update teams set
     market_card_id    = case when p_category = 'market'    then v_new.id else market_card_id end,
     customer_card_id  = case when p_category = 'customer'  then v_new.id else customer_card_id end,
-    problem_card_id   = case when p_category = 'problem'   then v_new.id else problem_card_id end,
     mission_card_id   = case when p_category = 'mission'   then v_new.id else mission_card_id end,
     resources_card_id = case when p_category = 'resources' then v_new.id else resources_card_id end,
     replacements_used = replacements_used + 1,
@@ -88,7 +86,8 @@ end;
 $$;
 
 -- ---------------------------------------------------------------------------
--- R2: request an action card (max 4 per team, no duplicate card per team)
+-- R2: request an action card. One card per category (action/deal/special),
+-- 3 max — a team's hand always ends up with exactly one of each.
 -- ---------------------------------------------------------------------------
 create or replace function fn_r2_request_card(
   p_team_id int, p_action_card_id int, p_request_id uuid
@@ -111,7 +110,7 @@ begin
 
   select count(*) into v_count from team_action_cards
   where team_id = p_team_id and source = 'r2';
-  if v_count >= 4 then
+  if v_count >= 3 then
     raise exception 'R2_LIMIT_REACHED';
   end if;
 
@@ -120,8 +119,6 @@ begin
     raise exception 'ALREADY_HAVE_CARD';
   end if;
 
-  -- one card per category: self_help, attack, deal, special (4 categories,
-  -- 4 max cards — a team's R2 hand always ends up with exactly one of each)
   select category into v_category from action_cards where id = p_action_card_id;
   if exists (
     select 1 from team_action_cards tac
@@ -140,7 +137,7 @@ end;
 $$;
 
 -- ---------------------------------------------------------------------------
--- Play a Self Help or Special/AI card: instant effect on the player's own team
+-- Play an Action or Special/AI card: instant effect on the player's own team
 -- ---------------------------------------------------------------------------
 create or replace function fn_play_self_card(
   p_team_id int, p_team_action_card_id uuid, p_request_id uuid
@@ -166,7 +163,7 @@ begin
   if v_tac.status <> 'held' then raise exception 'CARD_NOT_AVAILABLE'; end if;
 
   select * into v_card from action_cards where id = v_tac.action_card_id;
-  if v_card.category not in ('self_help','special') then raise exception 'WRONG_CARD_TYPE'; end if;
+  if v_card.category not in ('action','special') then raise exception 'WRONG_CARD_TYPE'; end if;
 
   select * into v_team from teams where id = p_team_id for update;
   v_before := fn_team_snapshot(p_team_id);
@@ -195,80 +192,6 @@ begin
   values (p_team_action_card_id, v_card.id, p_team_id, 'applied', p_request_id);
 
   return jsonb_build_object('before', v_before, 'after', v_after);
-end;
-$$;
-
--- ---------------------------------------------------------------------------
--- Play an Attack card: instant effect on self + a target team (single use)
--- ---------------------------------------------------------------------------
-create or replace function fn_play_attack_card(
-  p_team_id int, p_team_action_card_id uuid, p_target_team_id int, p_request_id uuid
-) returns jsonb
-language plpgsql as $$
-declare
-  v_tac team_action_cards%rowtype;
-  v_card action_cards%rowtype;
-  v_self teams%rowtype;
-  v_target teams%rowtype;
-  v_c record;
-  v_self_after jsonb;
-  v_target_after jsonb;
-begin
-  if exists (select 1 from card_plays where request_id = p_request_id) then
-    raise exception 'DUPLICATE_REQUEST';
-  end if;
-  if (select card_play_open from game_state where id = 1) is not true then
-    raise exception 'CARD_PLAY_CLOSED';
-  end if;
-  if p_target_team_id = p_team_id then raise exception 'CANNOT_TARGET_SELF'; end if;
-
-  select * into v_tac from team_action_cards where id = p_team_action_card_id for update;
-  if v_tac.id is null or v_tac.team_id <> p_team_id then raise exception 'CARD_NOT_FOUND'; end if;
-  if v_tac.status <> 'held' then raise exception 'CARD_NOT_AVAILABLE'; end if;
-
-  select * into v_card from action_cards where id = v_tac.action_card_id;
-  if v_card.category <> 'attack' then raise exception 'WRONG_CARD_TYPE'; end if;
-
-  -- lock both teams in a fixed order (lower id first) to avoid deadlocks between
-  -- two attacks that target each other at the same time
-  if p_team_id < p_target_team_id then
-    select * into v_self from teams where id = p_team_id for update;
-    select * into v_target from teams where id = p_target_team_id for update;
-  else
-    select * into v_target from teams where id = p_target_team_id for update;
-    select * into v_self from teams where id = p_team_id for update;
-  end if;
-  if v_target.id is null then raise exception 'TARGET_NOT_FOUND'; end if;
-
-  if v_self.cash_l + coalesce((v_card.self_effect->>'cash_l')::int,0) < 0 then
-    raise exception 'INSUFFICIENT_CASH';
-  end if;
-
-  v_c := fn_clamp_team(
-    v_self.cash_l + coalesce((v_card.self_effect->>'cash_l')::int,0),
-    v_self.customers + coalesce((v_card.self_effect->>'customers')::int,0),
-    v_self.reputation + coalesce((v_card.self_effect->>'reputation')::int,0),
-    v_self.innovation + coalesce((v_card.self_effect->>'innovation')::int,0));
-  update teams set cash_l=v_c.f1, customers=v_c.f2, reputation=v_c.f3, innovation=v_c.f4
-  where id = p_team_id;
-
-  v_c := fn_clamp_team(
-    v_target.cash_l + coalesce((v_card.target_effect->>'cash_l')::int,0),
-    v_target.customers + coalesce((v_card.target_effect->>'customers')::int,0),
-    v_target.reputation + coalesce((v_card.target_effect->>'reputation')::int,0),
-    v_target.innovation + coalesce((v_card.target_effect->>'innovation')::int,0));
-  update teams set cash_l=v_c.f1, customers=v_c.f2, reputation=v_c.f3, innovation=v_c.f4
-  where id = p_target_team_id;
-
-  v_self_after := fn_team_snapshot(p_team_id);
-  v_target_after := fn_team_snapshot(p_target_team_id);
-
-  update team_action_cards set status = 'used', used_at = now() where id = p_team_action_card_id;
-
-  insert into card_plays (team_action_card_id, action_card_id, team_id, other_team_id, status, request_id)
-  values (p_team_action_card_id, v_card.id, p_team_id, p_target_team_id, 'applied', p_request_id);
-
-  return jsonb_build_object('self_after', v_self_after, 'target_after', v_target_after);
 end;
 $$;
 
@@ -369,140 +292,6 @@ begin
   update card_plays set status = 'applied' where id = p_card_play_id;
 
   return jsonb_build_object('accepted', true, 'initiator_after', v_initiator_after, 'partner_after', v_partner_after);
-end;
-$$;
-
--- ---------------------------------------------------------------------------
--- Marketplace: 1 card for 1 card, no money
--- ---------------------------------------------------------------------------
-create or replace function fn_list_card(
-  p_team_id int, p_team_action_card_id uuid, p_request_id uuid
-) returns market_listings
-language plpgsql as $$
-declare
-  v_tac team_action_cards%rowtype;
-  v_row market_listings%rowtype;
-begin
-  if exists (select 1 from market_listings where request_id = p_request_id) then
-    raise exception 'DUPLICATE_REQUEST';
-  end if;
-  if (select marketplace_open from game_state where id = 1) is not true then
-    raise exception 'MARKETPLACE_CLOSED';
-  end if;
-
-  select * into v_tac from team_action_cards where id = p_team_action_card_id for update;
-  if v_tac.id is null or v_tac.team_id <> p_team_id then raise exception 'CARD_NOT_FOUND'; end if;
-  if v_tac.status <> 'held' then raise exception 'CARD_NOT_AVAILABLE'; end if;
-
-  update team_action_cards set status = 'listed' where id = p_team_action_card_id;
-
-  insert into market_listings (team_action_card_id, seller_team_id, request_id)
-  values (p_team_action_card_id, p_team_id, p_request_id)
-  returning * into v_row;
-
-  return v_row;
-end;
-$$;
-
-create or replace function fn_unlist_card(
-  p_team_id int, p_listing_id bigint, p_request_id uuid
-) returns void
-language plpgsql as $$
-declare
-  v_listing market_listings%rowtype;
-begin
-  select * into v_listing from market_listings where id = p_listing_id for update;
-  if v_listing.id is null or v_listing.seller_team_id <> p_team_id then raise exception 'LISTING_NOT_FOUND'; end if;
-  if v_listing.status <> 'active' then raise exception 'LISTING_NOT_ACTIVE'; end if;
-
-  update market_listings set status = 'unlisted', closed_at = now() where id = p_listing_id;
-  update team_action_cards set status = 'held' where id = v_listing.team_action_card_id;
-
-  -- any pending offers on this listing are void; their offered cards unlock
-  update trade_offers set status = 'void', resolved_at = now()
-  where listing_id = p_listing_id and status = 'pending';
-  update team_action_cards set status = 'held'
-  where id in (select offered_card_id from trade_offers
-               where listing_id = p_listing_id and status = 'void' and resolved_at = now());
-end;
-$$;
-
-create or replace function fn_make_trade_offer(
-  p_buyer_team_id int, p_listing_id bigint, p_offered_team_action_card_id uuid, p_request_id uuid
-) returns trade_offers
-language plpgsql as $$
-declare
-  v_listing market_listings%rowtype;
-  v_offered team_action_cards%rowtype;
-  v_row trade_offers%rowtype;
-begin
-  if exists (select 1 from trade_offers where request_id = p_request_id) then
-    raise exception 'DUPLICATE_REQUEST';
-  end if;
-  if (select marketplace_open from game_state where id = 1) is not true then
-    raise exception 'MARKETPLACE_CLOSED';
-  end if;
-
-  select * into v_listing from market_listings where id = p_listing_id for update;
-  if v_listing.id is null or v_listing.status <> 'active' then raise exception 'LISTING_NOT_ACTIVE'; end if;
-  if v_listing.seller_team_id = p_buyer_team_id then raise exception 'CANNOT_TRADE_WITH_SELF'; end if;
-
-  select * into v_offered from team_action_cards where id = p_offered_team_action_card_id for update;
-  if v_offered.id is null or v_offered.team_id <> p_buyer_team_id then raise exception 'OFFERED_CARD_NOT_FOUND'; end if;
-  if v_offered.status <> 'held' then raise exception 'OFFERED_CARD_NOT_AVAILABLE'; end if;
-
-  update team_action_cards set status = 'pending' where id = p_offered_team_action_card_id;
-
-  insert into trade_offers (listing_id, buyer_team_id, offered_card_id, request_id)
-  values (p_listing_id, p_buyer_team_id, p_offered_team_action_card_id, p_request_id)
-  returning * into v_row;
-
-  return v_row;
-end;
-$$;
-
-create or replace function fn_respond_trade_offer(
-  p_seller_team_id int, p_offer_id bigint, p_accept boolean, p_request_id uuid
-) returns jsonb
-language plpgsql as $$
-declare
-  v_offer trade_offers%rowtype;
-  v_listing market_listings%rowtype;
-  v_other_offer_id bigint;
-begin
-  select * into v_offer from trade_offers where id = p_offer_id for update;
-  if v_offer.id is null then raise exception 'OFFER_NOT_FOUND'; end if;
-  if v_offer.status <> 'pending' then raise exception 'OFFER_ALREADY_RESOLVED'; end if;
-
-  select * into v_listing from market_listings where id = v_offer.listing_id for update;
-  if v_listing.seller_team_id <> p_seller_team_id then raise exception 'NOT_YOUR_LISTING'; end if;
-  if v_listing.status <> 'active' then raise exception 'LISTING_NOT_ACTIVE'; end if;
-
-  if not p_accept then
-    update trade_offers set status = 'rejected', resolved_at = now() where id = p_offer_id;
-    update team_action_cards set status = 'held' where id = v_offer.offered_card_id;
-    return jsonb_build_object('accepted', false);
-  end if;
-
-  -- swap ownership: the listed card goes to the buyer, the offered card goes to the seller
-  update team_action_cards set team_id = v_offer.buyer_team_id, status = 'held', source = 'trade'
-  where id = v_listing.team_action_card_id;
-  update team_action_cards set team_id = p_seller_team_id, status = 'held', source = 'trade'
-  where id = v_offer.offered_card_id;
-
-  update market_listings set status = 'sold', closed_at = now() where id = v_listing.id;
-  update trade_offers set status = 'accepted', resolved_at = now() where id = p_offer_id;
-
-  -- every other pending offer on this listing is void; unlock their offered cards
-  for v_other_offer_id in
-    select id from trade_offers where listing_id = v_listing.id and status = 'pending'
-  loop
-    update trade_offers set status = 'void', resolved_at = now() where id = v_other_offer_id;
-    update team_action_cards set status = 'held'
-    where id = (select offered_card_id from trade_offers where id = v_other_offer_id);
-  end loop;
-
-  return jsonb_build_object('accepted', true);
 end;
 $$;
 

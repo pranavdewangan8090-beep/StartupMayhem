@@ -16,15 +16,13 @@
   --warning: #eab976;
 
   /* action card category colors */
-  --cat-self-help: #4ade80;
-  --cat-attack: #f87171;
+  --cat-action: #4ade80;
   --cat-deal: #7dd3fc;
   --cat-special: #c084fc;
 
   /* identity card category colors */
   --id-market: #7dd3fc;
   --id-customer: #eab976;
-  --id-problem: #f0a8c4;
   --id-mission: #b8a8f0;
   --id-resources: #6ee7c4;
 
@@ -427,13 +425,11 @@ p { color: var(--text-dim); line-height: 1.45; margin: 4px 0; }
 .row { display: flex; gap: 8px; align-items: center; justify-content: center; flex-wrap: wrap; }
 .action-card-tile .row { display: flex; gap: 8px; justify-content: center; margin-top: 10px; }
 
-.pill.cat-self_help { background: color-mix(in srgb, var(--cat-self-help) 18%, transparent); color: var(--cat-self-help); border-color: color-mix(in srgb, var(--cat-self-help) 40%, transparent); }
-.pill.cat-attack { background: color-mix(in srgb, var(--cat-attack) 18%, transparent); color: var(--cat-attack); border-color: color-mix(in srgb, var(--cat-attack) 40%, transparent); }
+.pill.cat-action { background: color-mix(in srgb, var(--cat-action) 18%, transparent); color: var(--cat-action); border-color: color-mix(in srgb, var(--cat-action) 40%, transparent); }
 .pill.cat-deal { background: color-mix(in srgb, var(--cat-deal) 18%, transparent); color: var(--cat-deal); border-color: color-mix(in srgb, var(--cat-deal) 40%, transparent); }
 .pill.cat-special { background: color-mix(in srgb, var(--cat-special) 18%, transparent); color: var(--cat-special); border-color: color-mix(in srgb, var(--cat-special) 40%, transparent); }
 .pill.cat-market { background: color-mix(in srgb, var(--id-market) 18%, transparent); color: var(--id-market); border-color: color-mix(in srgb, var(--id-market) 40%, transparent); }
 .pill.cat-customer { background: color-mix(in srgb, var(--id-customer) 18%, transparent); color: var(--id-customer); border-color: color-mix(in srgb, var(--id-customer) 40%, transparent); }
-.pill.cat-problem { background: color-mix(in srgb, var(--id-problem) 18%, transparent); color: var(--id-problem); border-color: color-mix(in srgb, var(--id-problem) 40%, transparent); }
 .pill.cat-mission { background: color-mix(in srgb, var(--id-mission) 18%, transparent); color: var(--id-mission); border-color: color-mix(in srgb, var(--id-mission) 40%, transparent); }
 .pill.cat-resources { background: color-mix(in srgb, var(--id-resources) 18%, transparent); color: var(--id-resources); border-color: color-mix(in srgb, var(--id-resources) 40%, transparent); }
 
@@ -578,7 +574,8 @@ table.data-table th { color: var(--text-dim); font-weight: 600; font-size: 0.72r
   gap: 16px;
 }
 @media (min-width: 760px) {
-  .desktop-grid { grid-template-columns: 1fr 1fr; align-items: start; }
+  .desktop-grid { grid-template-columns: 1fr 1fr; }
+  .desktop-grid > .card-surface { display: flex; flex-direction: column; }
 }
 
 .teams-grid {
@@ -688,14 +685,45 @@ table.data-table th { color: var(--text-dim); font-weight: 600; font-size: 0.72r
   transition: border-color 0.15s ease;
 }
 .catalog-tile:hover { border-color: var(--border-strong); }
-.catalog-tile .name { grid-column: 1; font-weight: 700; color: var(--text); font-size: 0.9rem; margin-top: 4px; }
+.catalog-tile .name { grid-column: 1; font-weight: 700; color: var(--text); font-size: 0.9rem; }
 .catalog-tile .effect { grid-column: 1; font-size: 0.76rem; color: var(--text-dim); margin-top: 2px; }
-.catalog-tile .pill { grid-column: 1; justify-self: start; }
-.catalog-tile .btn { grid-column: 2; grid-row: 1 / span 3; align-self: center; white-space: nowrap; }
+.catalog-tile .btn { grid-column: 2; grid-row: 1 / span 2; align-self: center; white-space: nowrap; }
 @media (max-width: 480px) {
   .catalog-tile { grid-template-columns: 1fr; }
   .catalog-tile .btn { grid-column: 1; grid-row: auto; width: 100%; margin-top: 6px; }
 }
+
+/* Catalog pyramid: one group per action-card category, 2 on top and the
+   3rd centered underneath, spanning the gap between the first two — collapses
+   gracefully as a team picks a category and that whole group disappears. */
+.catalog-pyramid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+}
+@media (min-width: 640px) {
+  .catalog-pyramid.groups-3, .catalog-pyramid.groups-2 {
+    grid-template-columns: 1fr 1fr;
+  }
+  .catalog-pyramid.groups-3 .catalog-group:nth-child(3) {
+    grid-column: 1 / -1;
+    max-width: 60%;
+    margin: 0 auto;
+  }
+}
+.catalog-group {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 16px;
+}
+.catalog-group-header {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+.catalog-group .catalog-grid { gap: 8px; }
+.catalog-group .catalog-tile { padding: 10px 12px; }
 
 @media (min-width: 900px) {
   .app-shell .page { max-width: 900px; }

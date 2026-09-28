@@ -6,13 +6,11 @@ import { areAllCardsRevealed, useRevealedCards } from '../../lib/revealedCards.j
 import DashboardTab from './DashboardTab.jsx';
 import CardsTab from './CardsTab.jsx';
 import ActionCardsTab from './ActionCardsTab.jsx';
-import MarketTab from './MarketTab.jsx';
 
 const TABS = [
   { key: 'dashboard', label: 'Dashboard' },
   { key: 'cards', label: 'My Cards' },
   { key: 'action', label: 'Action Cards' },
-  { key: 'market', label: 'Marketplace' },
 ];
 
 export default function PlayerApp() {
@@ -30,7 +28,6 @@ export default function PlayerApp() {
 
   const badge = (key) => {
     if (key === 'action' && state?.pending_deal_offers_in > 0) return state.pending_deal_offers_in;
-    if (key === 'market' && state?.pending_trade_offers_in > 0) return state.pending_trade_offers_in;
     return 0;
   };
 
@@ -45,7 +42,7 @@ export default function PlayerApp() {
               key={t.key}
               className={tab === t.key ? 'active' : ''}
               disabled={locked}
-              title={locked ? 'Reveal all 5 of your starting cards to unlock the Dashboard' : undefined}
+              title={locked ? 'Reveal all 4 of your starting cards to unlock the Dashboard' : undefined}
               onClick={() => !locked && setTab(t.key)}
             >
               {t.label}{badge(t.key) > 0 ? ` •${badge(t.key)}` : ''}{locked ? ' (locked)' : ''}
@@ -57,7 +54,6 @@ export default function PlayerApp() {
         {tab === 'dashboard' && allRevealed && <DashboardTab gameState={state} />}
         {tab === 'cards' && <CardsTab gameState={state} revealed={revealed} onReveal={reveal} />}
         {tab === 'action' && <ActionCardsTab gameState={state} onChanged={refreshNow} />}
-        {tab === 'market' && <MarketTab gameState={state} onChanged={refreshNow} />}
       </div>
     </div>
   );

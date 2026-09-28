@@ -71,7 +71,7 @@ export default function TeamResourcePanel() {
         {teams.map((t) => (
           <div key={t.id} className="card-surface section team-card">
             <h2>{t.team_code}</h2>
-            <p>{t.market_title} · {t.customer_title} · {t.problem_title}</p>
+            <p>{t.market_title} · {t.customer_title}</p>
             <div className="grid-2" style={{ marginBottom: 12 }}>
               <div className="stat-tile"><div className="value">₹{t.cash_l / 10}M</div><div className="label">Cash</div></div>
               <div className="stat-tile"><div className="value">{(t.customers / 1000).toFixed(0)}k</div><div className="label">Customers</div></div>
