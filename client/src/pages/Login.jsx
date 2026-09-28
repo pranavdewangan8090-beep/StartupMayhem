@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext.jsx';
 import { ApiError } from '../lib/supabase.js';
+import ECellLogo from '../components/ECellLogo.jsx';
 
 const ROLES = [
   { key: 'player', label: 'Player / Team' },
@@ -36,6 +37,7 @@ export default function Login() {
     <div className="login-wrap">
       <div className="login-card">
         <Link to="/" className="login-back">← THE MAYHEMVERSE</Link>
+        <div className="login-brand-mark"><ECellLogo size={44} /></div>
         <div className="login-title">Choose Your Access</div>
         <p className="login-sub">Log in to your team, admin or super admin account.</p>
 

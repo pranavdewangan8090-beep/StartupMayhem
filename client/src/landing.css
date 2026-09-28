@@ -6,7 +6,7 @@
   position: relative;
   overflow-x: hidden;
   background:
-    radial-gradient(circle at 20% 0%, rgba(34, 197, 94, 0.12), transparent 50%),
+    radial-gradient(circle at 20% 0%, rgba(240, 184, 0, 0.12), transparent 50%),
     radial-gradient(circle at 85% 20%, rgba(34, 211, 238, 0.1), transparent 55%),
     linear-gradient(180deg, #05070a 0%, #030405 100%);
 }
@@ -27,8 +27,8 @@
   -webkit-backdrop-filter: var(--glass-blur);
   border-bottom: 1px solid var(--border);
 }
-.lv-nav-brand { font-weight: 800; letter-spacing: 0.08em; font-size: 0.85rem; color: var(--text); }
-.lv-nav-brand span { color: var(--accent); }
+.lv-nav-brand { display: flex; align-items: center; gap: 8px; font-weight: 800; letter-spacing: 0.08em; font-size: 0.85rem; color: var(--text); }
+.lv-nav-brand span { color: var(--brand-gold); }
 
 .lv-section { position: relative; padding: 72px 20px; max-width: 1180px; margin: 0 auto; }
 .lv-narrow { max-width: 760px; }
@@ -62,7 +62,7 @@
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(circle at 50% 40%, rgba(34, 197, 94, 0.28), transparent 45%),
+    radial-gradient(circle at 50% 40%, rgba(240, 184, 0, 0.28), transparent 45%),
     radial-gradient(circle at 65% 60%, rgba(34, 211, 238, 0.22), transparent 50%);
   animation: hero-pulse 6s ease-in-out infinite;
 }
@@ -77,6 +77,12 @@
 .hero3d-canvas canvas { display: block; }
 
 .lv-hero-content { position: relative; z-index: 1; max-width: 720px; padding: 0 12px; }
+.lv-hero-logo {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 18px;
+  filter: drop-shadow(0 0 22px rgba(240, 184, 0, 0.45));
+}
 .lv-eyebrow { font-size: 0.72rem; font-weight: 800; letter-spacing: 0.16em; color: var(--accent-soft); margin-bottom: 14px; }
 .lv-title {
   font-size: clamp(2.2rem, 8vw, 4.2rem);
@@ -134,8 +140,8 @@
   opacity: 0.12;
   pointer-events: none;
 }
-.lv-stage-card.tone-green { border-color: color-mix(in srgb, var(--accent) 35%, var(--border)); }
-.lv-stage-card.tone-green::before { background: radial-gradient(circle at 20% 0%, var(--accent), transparent 60%); }
+.lv-stage-card.tone-green { border-color: color-mix(in srgb, var(--success) 35%, var(--border)); }
+.lv-stage-card.tone-green::before { background: radial-gradient(circle at 20% 0%, var(--success), transparent 60%); }
 .lv-stage-card.tone-cyan { border-color: color-mix(in srgb, var(--accent-2) 35%, var(--border)); }
 .lv-stage-card.tone-cyan::before { background: radial-gradient(circle at 20% 0%, var(--accent-2), transparent 60%); }
 .lv-stage-card.tone-amber { border-color: color-mix(in srgb, var(--warning) 35%, var(--border)); }
@@ -210,7 +216,7 @@
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: rgba(34, 197, 94, 0.14);
+  background: color-mix(in srgb, var(--brand-gold) 16%, transparent);
   border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border));
   color: var(--accent-soft);
   display: flex;

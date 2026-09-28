@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import ECellLogo from '../components/ECellLogo.jsx';
 import HeroScene from '../components/landing/HeroScene.jsx';
 import { initScrollReveal } from '../lib/scrollReveal.js';
 import '../landing.css';
@@ -85,13 +86,14 @@ export default function Landing() {
   return (
     <div className="landing-root" ref={rootRef}>
       <header className="lv-nav">
-        <div className="lv-nav-brand">E-CELL <span>NIT TRICHY</span></div>
+        <div className="lv-nav-brand"><ECellLogo size={30} /> E-CELL <span>NIT TRICHY</span></div>
         <button className="btn btn-ghost btn-sm" onClick={() => navigate('/login')}>Log In</button>
       </header>
 
       <Section id="hero" className="lv-hero">
         <HeroScene />
         <div className="lv-hero-content">
+          <div className="lv-hero-logo" data-reveal><ECellLogo size={72} /></div>
           <div className="lv-eyebrow" data-reveal>E-CELL NIT TRICHY PRESENTS</div>
           <h1 className="lv-title" data-reveal>
             STARTUP MAYHEM <span className="lv-title-accent">&apos;26</span>

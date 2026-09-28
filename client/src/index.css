@@ -1,16 +1,20 @@
 :root {
-  /* Mayhemverse palette: near-black base, E-Cell emerald primary, electric
-     cyan secondary, amber for funding/strategy, red reserved for Mayhem.
-     Everything layered on top stays frosted glass. */
+  /* Brand identity: near-black base + the official E-Cell NIT Trichy gold
+     (#f0b800, sampled from the real logo) as the dominant accent. The
+     Mayhemverse palette (green/cyan/amber/red) supports it as secondary,
+     meaningful state color — it never replaces the brand. Everything
+     layered on top stays frosted glass. */
   --bg: #05070a;
   --bg-elevated: rgba(255, 255, 255, 0.045);
   --bg-card: rgba(255, 255, 255, 0.055);
   --border: rgba(255, 255, 255, 0.09);
   --border-strong: rgba(255, 255, 255, 0.16);
-  --text: #eef4f0;
-  --text-dim: #97a3a0;
-  --accent: #22c55e;
-  --accent-soft: #6ee7b7;
+  --text: #f4f1e8;
+  --text-dim: #a3a09a;
+  --brand-gold: #f0b800;
+  --brand-gold-soft: #ffd873;
+  --accent: var(--brand-gold);
+  --accent-soft: var(--brand-gold-soft);
   --accent-2: #22d3ee;
   --success: #4ade80;
   --danger: #ef4444;
@@ -61,9 +65,9 @@ a { color: var(--accent); text-decoration: none; }
   inset: 0;
   z-index: -1;
   background:
-    radial-gradient(circle at 15% 8%, rgba(34, 197, 94, 0.14), transparent 45%),
+    radial-gradient(circle at 15% 8%, rgba(240, 184, 0, 0.14), transparent 45%),
     radial-gradient(circle at 85% 15%, rgba(34, 211, 238, 0.13), transparent 50%),
-    radial-gradient(circle at 50% 100%, rgba(34, 197, 94, 0.07), transparent 55%),
+    radial-gradient(circle at 50% 100%, rgba(240, 184, 0, 0.07), transparent 55%),
     linear-gradient(180deg, #090b0e 0%, #05070a 55%, #030405 100%);
 }
 .login-wrap::before {
@@ -72,7 +76,7 @@ a { color: var(--accent); text-decoration: none; }
   inset: 0;
   z-index: -1;
   background:
-    radial-gradient(circle at 20% 15%, rgba(34, 197, 94, 0.18), transparent 45%),
+    radial-gradient(circle at 20% 15%, rgba(240, 184, 0, 0.18), transparent 45%),
     radial-gradient(circle at 82% 78%, rgba(34, 211, 238, 0.18), transparent 50%),
     linear-gradient(180deg, #090b0e 0%, #05070a 60%, #030405 100%);
 }
@@ -90,8 +94,9 @@ a { color: var(--accent); text-decoration: none; }
   -webkit-backdrop-filter: var(--glass-blur);
   border-bottom: 1px solid var(--border);
 }
-.topbar .brand { font-weight: 700; letter-spacing: 0.03em; font-size: 1.05rem; color: var(--text); }
+.topbar .brand { display: flex; align-items: center; gap: 8px; font-weight: 700; letter-spacing: 0.03em; font-size: 1.05rem; color: var(--text); }
 .topbar .brand span { color: var(--accent); font-weight: 700; }
+.ecell-logo { display: block; object-fit: contain; flex-shrink: 0; }
 .topbar .logout-btn {
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid var(--border);
@@ -457,6 +462,7 @@ p { color: var(--text-dim); line-height: 1.45; margin: 4px 0; }
   transition: color 0.15s ease;
 }
 .login-back:hover { color: var(--accent-soft); }
+.login-brand-mark { display: flex; justify-content: center; margin-bottom: 12px; }
 .login-title {
   text-align: center;
   margin-bottom: 4px;
@@ -507,7 +513,7 @@ p { color: var(--text-dim); line-height: 1.45; margin: 4px 0; }
 }
 .field input:focus, .field select:focus, .field textarea:focus {
   outline: none;
-  border-color: var(--accent);
+  border-color: var(--accent-2);
 }
 
 .error-text { color: var(--danger); font-size: 0.82rem; margin-top: 6px; }
@@ -552,7 +558,7 @@ table.data-table th { color: var(--text-dim); font-weight: 600; font-size: 0.72r
   top: 0;
   height: 100vh;
 }
-.super-brand { font-weight: 700; font-size: 1.15rem; letter-spacing: 0.02em; color: var(--text); padding: 0 10px; }
+.super-brand { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 1.15rem; letter-spacing: 0.02em; color: var(--text); padding: 0 10px; }
 .super-brand span { color: var(--accent); }
 .super-brand-sub { color: var(--text-dim); font-size: 0.75rem; padding: 0 10px 20px; text-transform: uppercase; letter-spacing: 0.06em; }
 .super-nav { display: flex; flex-direction: column; gap: 4px; flex: 1; }

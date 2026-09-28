@@ -31,8 +31,8 @@ function MayhemCore({ mouse }) {
       <mesh ref={coreRef}>
         <icosahedronGeometry args={[1.15, 1]} />
         <meshStandardMaterial
-          color="#22c55e"
-          emissive="#22c55e"
+          color="#f0b800"
+          emissive="#f0b800"
           emissiveIntensity={0.55}
           wireframe
           transparent
@@ -44,10 +44,10 @@ function MayhemCore({ mouse }) {
         <meshStandardMaterial
           color="#22d3ee"
           emissive="#22d3ee"
-          emissiveIntensity={0.35}
+          emissiveIntensity={0.3}
           wireframe
           transparent
-          opacity={0.35}
+          opacity={0.3}
         />
       </mesh>
     </group>
@@ -79,7 +79,7 @@ function ParticleField() {
       <bufferGeometry>
         <bufferAttribute attach="attributes-position" args={[positions, 3]} />
       </bufferGeometry>
-      <pointsMaterial color="#6ee7b7" size={0.035} sizeAttenuation transparent opacity={0.6} />
+      <pointsMaterial color="#4ade80" size={0.035} sizeAttenuation transparent opacity={0.55} />
     </points>
   );
 }
@@ -88,8 +88,8 @@ function Scene({ mouse }) {
   return (
     <>
       <ambientLight intensity={0.4} />
-      <pointLight position={[4, 3, 5]} intensity={40} color="#22d3ee" />
-      <pointLight position={[-4, -2, -3]} intensity={25} color="#22c55e" />
+      <pointLight position={[4, 3, 5]} intensity={40} color="#f0b800" />
+      <pointLight position={[-4, -2, -3]} intensity={25} color="#22d3ee" />
       <MayhemCore mouse={mouse} />
       <ParticleField />
     </>
