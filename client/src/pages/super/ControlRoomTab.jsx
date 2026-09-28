@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { api, newRequestId, ApiError } from '../../lib/api.js';
+import { supabase, call, newRequestId, ApiError } from '../../lib/supabase.js';
 import { useToast } from '../../lib/ToastContext.jsx';
 
 const TOGGLES = [
@@ -61,21 +61,21 @@ export default function ControlRoomTab() {
 
   async function load() {
     const [t, ev, m] = await Promise.all([
-      api.get('/super-admin/toggles'),
-      api.get('/mayhem/events'),
-      api.get('/mayhem/current'),
+      call(supabase.rpc('fn_super_toggles_get')),
+      call(supabase.rpc('fn_mayhem_events')),
+      call(supabase.rpc('fn_mayhem_current')).then((rows) => rows?.[0] ?? null),
     ]);
     setToggles(t);
     setEvents(ev);
     setMayhem(m);
-    setTeamStatus(m ? await api.get('/mayhem/team-status') : []);
+    setTeamStatus(m ? await call(supabase.rpc('fn_mayhem_team_status')) : []);
   }
   useEffect(() => { load(); }, []);
 
   async function flip(key, value) {
     setBusy(true);
     try {
-      await api.post('/super-admin/toggles', { key, value });
+      await call(supabase.rpc('fn_super_toggles_set', { p_key: key, p_value: value }));
       await load();
     } catch (err) {
       toast(err instanceof ApiError ? err.message : 'Could not update toggle.', 'error');
@@ -85,13 +85,16 @@ export default function ControlRoomTab() {
   async function trigger() {
     setBusy(true);
     try {
-      const triggered = await api.post('/mayhem/trigger', {});
+      const triggered = await call(supabase.rpc('fn_trigger_mayhem_event'));
       // set the mayhem + open the overlay from the trigger response itself
       // (no round trip through load() needed to know what just got triggered)
       setMayhem(triggered);
       setShowOverlay(true);
       toast('Mayhem event triggered!', 'success');
-      const [ev, ts] = await Promise.all([api.get('/mayhem/events'), api.get('/mayhem/team-status')]);
+      const [ev, ts] = await Promise.all([
+        call(supabase.rpc('fn_mayhem_events')),
+        call(supabase.rpc('fn_mayhem_team_status')),
+      ]);
       setEvents(ev);
       setTeamStatus(ts);
     } catch (err) {
@@ -102,9 +105,11 @@ export default function ControlRoomTab() {
   async function recordResponse(teamId, response, partnerTeamId) {
     setBusy(true);
     try {
-      await api.post('/mayhem/respond', { teamId, response, partnerTeamId, requestId: newRequestId() });
+      await call(supabase.rpc('fn_record_mayhem_response', {
+        p_team_id: teamId, p_response: response, p_partner_team_id: partnerTeamId, p_request_id: newRequestId(),
+      }));
       toast('Response recorded.', 'success');
-      setTeamStatus(await api.get('/mayhem/team-status'));
+      setTeamStatus(await call(supabase.rpc('fn_mayhem_team_status')));
     } catch (err) {
       toast(err instanceof ApiError ? err.message : 'Could not record response.', 'error');
     } finally { setBusy(false); }

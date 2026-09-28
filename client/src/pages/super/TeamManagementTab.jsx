@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { api, ApiError } from '../../lib/api.js';
+import { supabase, call, ApiError } from '../../lib/supabase.js';
 import { useToast } from '../../lib/ToastContext.jsx';
 import Modal from '../../components/Modal.jsx';
 
@@ -11,7 +11,7 @@ export default function TeamManagementTab() {
   const toast = useToast();
 
   async function load() {
-    setTeams(await api.get('/admin/teams'));
+    setTeams(await call(supabase.rpc('fn_admin_teams')));
   }
   useEffect(() => { load(); }, []);
 
@@ -19,7 +19,7 @@ export default function TeamManagementTab() {
     if (!newCode.trim()) return;
     setBusy(true);
     try {
-      const result = await api.post('/super-admin/teams', { teamCode: newCode.trim() });
+      const result = await call(supabase.rpc('fn_super_add_team', { p_team_code: newCode.trim() }));
       setCredential(result);
       setNewCode('');
       await load();
@@ -31,7 +31,7 @@ export default function TeamManagementTab() {
   async function deactivate(teamId) {
     setBusy(true);
     try {
-      await api.post(`/super-admin/teams/${teamId}/deactivate`, {});
+      await call(supabase.rpc('fn_super_deactivate_team', { p_team_id: teamId }));
       toast('Team deactivated.', 'info');
       await load();
     } catch (err) {

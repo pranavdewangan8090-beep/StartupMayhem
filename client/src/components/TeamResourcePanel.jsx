@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import Modal from './Modal.jsx';
-import { api, ApiError } from '../lib/api.js';
+import { supabase, call, ApiError } from '../lib/supabase.js';
 import { useToast } from '../lib/ToastContext.jsx';
 
 /**
@@ -16,7 +16,7 @@ export default function TeamResourcePanel() {
   const toast = useToast();
 
   async function load() {
-    setTeams(await api.get('/admin/teams'));
+    setTeams(await call(supabase.rpc('fn_admin_teams')));
   }
   useEffect(() => { load(); }, []);
 
@@ -32,13 +32,15 @@ export default function TeamResourcePanel() {
   async function submitResources() {
     setBusy(true);
     try {
-      await api.post('/admin/resources/adjust', {
-        teamId: modal.team.id,
-        dCashL: Number(form.dCashL) || 0,
-        dCustomers: Number(form.dCustomers) || 0,
-        dReputation: Number(form.dReputation) || 0,
-        dInnovation: Number(form.dInnovation) || 0,
-      });
+      await call(supabase.rpc('fn_admin_adjust_resources', {
+        p_team_id: modal.team.id,
+        p_delta: {
+          cash_l: Number(form.dCashL) || 0,
+          customers: Number(form.dCustomers) || 0,
+          reputation: Number(form.dReputation) || 0,
+          innovation: Number(form.dInnovation) || 0,
+        },
+      }));
       toast('Resources updated.', 'success');
       setModal(null);
       await load();
@@ -52,7 +54,7 @@ export default function TeamResourcePanel() {
     if (!delta) { toast('Delta cannot be zero.', 'error'); return; }
     setBusy(true);
     try {
-      await api.post('/admin/decision-points/adjust', { teamId: modal.team.id, delta });
+      await call(supabase.rpc('fn_admin_adjust_decision_points', { p_team_id: modal.team.id, p_payload: { delta } }));
       toast('Decision points recorded.', 'success');
       setModal(null);
     } catch (err) {
