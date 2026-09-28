@@ -1,60 +1,59 @@
 # Startup Mayhem
 
 Event platform for E-Cell NIT Trichy's Startup Mayhem. React (mobile-first) +
-Node/Express + Supabase Postgres.
+Supabase (Postgres + PostgREST) — **no deployed backend**: the client calls
+Supabase directly, and every game rule runs as a Postgres function.
 
 ## Folder structure
 
 ```
-server/   Express API. All game rules run as Postgres functions (server/sql/005_functions.sql)
-  sql/    001 schema, 002-004 seed data, 005 game-logic functions — run in order
-  src/    routes, middleware, db pool, config
+server/   Not a deployed server — just SQL + one-off scripts run against Supabase
+  sql/    001 schema, 002-004 seed data, 005 game-logic functions,
+          010-014 the Supabase-direct auth + RPC layer — run in order
   scripts/seedUsers.js   creates the real 30 teams / 30 admins / 5 super admins
-client/   React (Vite) mobile-first UI
+client/   React (Vite) mobile-first UI — talks to Supabase via lib/supabase.js
 ```
 
 ## One-time setup
 
 ### 1. Database (Supabase)
 
-In the Supabase SQL editor, or via `psql "$DATABASE_URL"`, run the files in
-`server/sql/` **in order**: `001` → `002` → `003` → `004` → `005`.
+In the Supabase SQL editor, or via `psql "$DATABASE_URL"`, run every file in
+`server/sql/` **in order**: `001` → `002` → `003` → `004` → `005` → `010` →
+`011` → `012` → `013` → `014` (or just `cd server && npm run seed:cards`,
+which runs all of them). `004_seed_mayhems.sql` currently has **4 placeholder
+mayhems** — replace this file with your real mayhem list before the event
+(tags must be one or more of `finance`, `social`, `urban`, `logistics`).
 
-`004_seed_mayhems.sql` currently has **4 placeholder mayhems** — replace this
-file with your real mayhem list before the event (tags must be one or more of
-`finance`, `social`, `urban`, `logistics`).
-
-### 2. Server
-
-```
-cd server
-cp .env.example .env      # fill in DATABASE_URL (Supabase connection string) and a JWT_SECRET
-npm install
-npm run dev                # or `npm start` in production
-```
+You'll also need to create `_app_secrets` yourself (it's deliberately not in
+any SQL file, so the real JWT secret never touches source control) — see the
+comment at the top of `server/sql/010_supabase_auth.sql`.
 
 Then create the real accounts (30 teams with a random deal of cards, 30
 admins, 5 super admins):
 
 ```
+cd server
+cp .env.example .env      # fill in DATABASE_URL (Supabase connection string)
+npm install
 node scripts/seedUsers.js
 ```
 
 This writes `server/scripts/credentials.local.csv` — hand these out and then
 move/delete the file. It is git-ignored and must never be committed.
 
-### 3. Client
+### 2. Client
 
 ```
 cd client
+cp .env.example .env   # VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY (both public values)
 npm install
-npm run dev        # local dev, proxies /api to the server on :4000
-npm run build       # production build (dist/) — deploy behind your host of choice
+npm run dev             # local dev
+npm run build            # production build (dist/) — deploy behind your host of choice, e.g. Vercel/Netlify
 ```
 
-In production, set `CORS_ORIGINS` on the server to the exact URL the client
-is served from (comma-separated if more than one), and serve the client over
-HTTPS so the auth cookie's `Secure` flag works.
+Both env values are safe to expose client-side (the anon key relies on RLS +
+locked-down grants, not secrecy) — see `client/.env`.
 
 ## Login
 
@@ -63,35 +62,44 @@ switch — this is needed because admin and super admin both use plain numeric
 IDs that would otherwise collide (`admin #1` and `super_admin #1` are
 different accounts).
 
+Auth is custom, not Supabase Auth/GoTrue: `fn_login` (in
+`010_supabase_auth.sql`) verifies the password against `users.password_hash`
+with pgcrypto and mints a JWT signed with the project's own secret.
+PostgREST verifies that JWT exactly like a Supabase Auth token, and
+`fn_auth_user()` is how every RLS-locked table and RPC function reads the
+caller's identity back out of it.
+
 ## Live updates
 
-Polling, not WebSockets: the client hits `GET /api/player/state?v=<version>`
-every 4s; the server returns `204 No Content` when nothing changed and the
-full state otherwise. This covers marketplace requests, attack notifications,
-toggle changes and the mayhem card reliably on ~30 phones, with none of the
-socket/reconnect complexity Supabase Realtime would add on venue WiFi.
+Polling, not WebSockets: the client calls `fn_player_state()` every 4s. This
+covers action-card requests, deal offers, toggle changes and the mayhem card
+reliably on ~30 phones, with none of the socket/reconnect complexity Supabase
+Realtime would add on venue WiFi.
 
 ## Security notes
 
-- All passwords are bcrypt-hashed; no plaintext password is stored anywhere.
-- Every route re-checks the caller's role server-side; the client's role
-  display is cosmetic only.
+- All passwords are bcrypt-hashed (via pgcrypto's `crypt()`/`gen_salt('bf')`,
+  compatible with the same hash format `bcryptjs` used previously); no
+  plaintext password is stored anywhere.
+- **No table is ever exposed to PostgREST via RLS policy + grant.** Every
+  table a client can reach data from (`teams`, `users`, `_app_secrets`, etc.)
+  has RLS enabled with zero policies and no grants to `anon`/`authenticated`
+  — the only way in is a curated `SECURITY DEFINER` function that derives the
+  caller's identity from `fn_auth_user()` and returns only the columns that
+  role should see. This is deliberate: RLS is row-level only, so a policy
+  letting a player `SELECT` their own team row would also let them query
+  hidden columns (like `decision_points`) via `?select=`. Every admin/super
+  admin RPC additionally checks the caller's role via `fn_require_role()`.
 - One active login per team: logging in again immediately invalidates the
   previous session's token (`session_version` bump), even if that phone still
-  has the old cookie.
-- Every game rule (the 3-replacement cap, the 4-action-card cap, resource
-  caps/floors, marketplace ownership checks) is enforced inside a Postgres
+  has the old JWT.
+- Every game rule (the 3-replacement cap, the 3-action-card cap, resource
+  caps/floors, deal-card ownership checks) is enforced inside a Postgres
   function with row locks — never trusted from the client, and safe against
   two people acting at the same instant.
-- Every mutating request carries a client-generated `requestId`; a repeat
+- Every mutating RPC call carries a client-generated `requestId`; a repeat
   (double-tap, retry) is rejected as a duplicate rather than applied twice.
-- CSRF: the auth cookie is `httpOnly` and, in production, `SameSite=None;
-  Secure` (needed because the client and server are different origins); every
-  state-changing request is additionally checked against the `Origin` header
-  and rejected if it doesn't match `CORS_ORIGINS`.
-- Rate limits on login and on every game-action endpoint.
-- `zod` validates every request body before it reaches business logic.
-- Decision points are never returned by any player-facing route.
+- Decision points are never returned by any player-facing function.
 
 ## Placeholder data
 
