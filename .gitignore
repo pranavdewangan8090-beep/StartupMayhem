@@ -2,6 +2,9 @@ node_modules/
 .env
 .env.*
 !.env.example
+# client/.env holds only the Supabase URL + anon (public) key — both are
+# meant to be embedded in client-side code, unlike server/.env's real secrets
+!client/.env
 server/scripts/credentials.local.csv
 dist/
 build/

@@ -1,16 +1,30 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { api, ApiError } from './api.js';
+import { supabase, getToken, setToken, call } from './supabase.js';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(undefined); // undefined = loading, null = logged out
 
+  // there's no server session to ask "who am I" — instead, re-validate the
+  // JWT already sitting in localStorage against the DB (checks session_version
+  // and is_active too, so a stale/replaced token is caught immediately)
   const refresh = useCallback(async () => {
+    if (!getToken()) {
+      setUser(null);
+      return;
+    }
     try {
-      const me = await api.get('/auth/me');
-      setUser(me);
+      const rows = await call(supabase.rpc('fn_auth_user'));
+      const me = rows?.[0];
+      if (!me) {
+        setToken(null);
+        setUser(null);
+      } else {
+        setUser({ role: me.app_role, teamId: me.team_id });
+      }
     } catch {
+      setToken(null);
       setUser(null);
     }
   }, []);
@@ -20,29 +34,16 @@ export function AuthProvider({ children }) {
   }, [refresh]);
 
   const login = useCallback(async (loginId, password, role) => {
-    const result = await api.post('/auth/login', { loginId, password, role });
-    setUser(result);
-    return result;
+    const result = await call(supabase.rpc('fn_login', { p_role: role, p_login_id: loginId, p_password: password }));
+    setToken(result.token);
+    const me = { role: result.role, teamId: result.teamId };
+    setUser(me);
+    return me;
   }, []);
 
   const logout = useCallback(async () => {
-    try {
-      await api.post('/auth/logout');
-    } catch {
-      // ignore
-    }
+    setToken(null);
     setUser(null);
-  }, []);
-
-  // if any request comes back 401 SESSION_REPLACED, drop straight to login with a clear reason
-  useEffect(() => {
-    function onUnhandled(e) {
-      if (e?.reason instanceof ApiError && e.reason.code === 'SESSION_REPLACED') {
-        setUser(null);
-      }
-    }
-    window.addEventListener('unhandledrejection', onUnhandled);
-    return () => window.removeEventListener('unhandledrejection', onUnhandled);
   }, []);
 
   return <AuthContext.Provider value={{ user, login, logout, refresh }}>{children}</AuthContext.Provider>;

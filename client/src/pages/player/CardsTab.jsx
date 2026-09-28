@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { api, newRequestId, ApiError } from '../../lib/api.js';
+import { supabase, call, ApiError } from '../../lib/supabase.js';
 import { useToast } from '../../lib/ToastContext.jsx';
 import FlipCard from '../../components/FlipCard.jsx';
 import Modal from '../../components/Modal.jsx';
@@ -28,14 +28,15 @@ export default function CardsTab({ gameState, revealed, onReveal }) {
   const toast = useToast();
 
   async function load() {
-    setCards(await api.get('/player/cards'));
+    const rows = await call(supabase.rpc('fn_player_cards'));
+    setCards(rows?.[0]);
   }
   useEffect(() => { load(); }, []);
 
   async function replace(category) {
     setBusyCat(category);
     try {
-      await api.post('/player/cards/replace', { category, requestId: newRequestId() });
+      await call(supabase.rpc('fn_replace_identity_card', { p_category: category }));
       toast(`New ${category} card drawn.`, 'success');
       await load();
     } catch (err) {

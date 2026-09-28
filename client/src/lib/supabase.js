@@ -1,0 +1,91 @@
+// Talks to Supabase directly from the browser — no Express server. Auth is
+// custom (not Supabase Auth/GoTrue): fn_login mints a JWT signed with this
+// project's own JWT secret (see server/sql/010_supabase_auth.sql), PostgREST
+// verifies it like any other Supabase Auth token, and every RLS policy / RPC
+// function reads the caller's identity back out via fn_auth_user().
+import { createClient } from '@supabase/supabase-js';
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+const TOKEN_KEY = 'sm_token';
+
+export function getToken() {
+  try { return localStorage.getItem(TOKEN_KEY); } catch { return null; }
+}
+export function setToken(token) {
+  try {
+    if (token) localStorage.setItem(TOKEN_KEY, token);
+    else localStorage.removeItem(TOKEN_KEY);
+  } catch { /* storage unavailable — session just won't survive a reload */ }
+}
+
+// The `accessToken` callback is supabase-js's supported hook for exactly this
+// "bring your own JWT" pattern — it's read fresh on every request, so
+// swapping the stored token (login/logout) takes effect immediately without
+// recreating the client.
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: { persistSession: false, autoRefreshToken: false },
+  accessToken: async () => getToken() ?? undefined,
+});
+
+// A RAISE EXCEPTION '<CODE>' inside a Postgres function comes back from
+// PostgREST as error.message = '<CODE>' verbatim — this mirrors
+// server/src/lib/errors.js's CODE_MAP so the client shows the same
+// player-safe copy the old Express API used to.
+const CODE_MAP = {
+  INVALID_CREDENTIALS: 'Wrong ID or password.',
+  DUPLICATE_REQUEST: 'This action was already submitted.',
+  TEAM_NOT_FOUND: 'Team not found.',
+  BAD_CATEGORY: 'Unknown card category.',
+  REPLACEMENTS_CLOSED: 'Card replacement is closed.',
+  REPLACEMENT_LIMIT_REACHED: 'You have used all 3 card replacements.',
+  R2_CLOSED: 'Action card selection is closed.',
+  R2_LIMIT_REACHED: 'You already have 3 action cards.',
+  ALREADY_HAVE_CARD: 'You already requested this card.',
+  CATEGORY_ALREADY_TAKEN: 'You already have a card from this category.',
+  CARD_PLAY_CLOSED: 'Playing action cards is closed right now.',
+  CARD_NOT_FOUND: 'Card not found.',
+  CARD_NOT_AVAILABLE: 'That card cannot be used right now.',
+  WRONG_CARD_TYPE: 'Wrong card type for this action.',
+  INSUFFICIENT_CASH: 'Not enough Cash to play this card.',
+  CANNOT_TARGET_SELF: 'You cannot target your own team.',
+  TARGET_NOT_FOUND: 'Target team not found.',
+  PARTNER_NOT_FOUND: 'Partner team not found.',
+  DEAL_NOT_FOUND: 'Deal offer not found.',
+  DEAL_ALREADY_RESOLVED: 'This deal was already resolved.',
+  NO_MORE_EVENTS: 'All 3 Market Mayhem events have already been triggered.',
+  EVENT_NOT_FOUND: 'Mayhem event not found.',
+  BAD_RESPONSE: 'Unknown response type.',
+  PARTNER_REQUIRED: 'A partner team is required for this response.',
+};
+
+export class ApiError extends Error {
+  constructor(message, code) {
+    super(message || 'Request failed');
+    this.code = code;
+  }
+}
+
+/** Wraps a supabase-js call, throwing ApiError on failure so callers can
+ * keep the same try/catch shape the old fetch-based client used. */
+export async function call(promise) {
+  const { data, error } = await promise;
+  if (error) {
+    const code = (error.message || '').trim();
+    throw new ApiError(CODE_MAP[code] || error.message, code);
+  }
+  return data;
+}
+
+export function newRequestId() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  const b = new Uint8Array(16);
+  crypto.getRandomValues(b);
+  b[6] = (b[6] & 0x0f) | 0x40;
+  b[8] = (b[8] & 0x3f) | 0x80;
+  const h = [...b].map((x) => x.toString(16).padStart(2, '0')).join('');
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+}
