@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext.jsx';
 import { ApiError } from '../lib/supabase.js';
 
 const ROLES = [
-  { key: 'player', label: 'Team' },
+  { key: 'player', label: 'Player / Team' },
   { key: 'admin', label: 'Admin' },
   { key: 'super_admin', label: 'Super Admin' },
 ];
@@ -24,7 +24,7 @@ export default function Login() {
     setBusy(true);
     try {
       await login(loginId.trim(), password, role);
-      navigate('/', { replace: true });
+      navigate('/app', { replace: true });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not log in. Try again.');
     } finally {
@@ -35,7 +35,8 @@ export default function Login() {
   return (
     <div className="login-wrap">
       <div className="login-card">
-        <div className="login-title">Startup Mayhem</div>
+        <Link to="/" className="login-back">← THE MAYHEMVERSE</Link>
+        <div className="login-title">Choose Your Access</div>
         <p className="login-sub">Log in to your team, admin or super admin account.</p>
 
         <div className="card-surface">

@@ -1,30 +1,33 @@
 :root {
-  /* Premium dark palette: deep charcoal-navy base, champagne-gold accent,
-     cool violet secondary. Everything layered on top is frosted glass. */
-  --bg: #0a0b10;
+  /* Mayhemverse palette: near-black base, E-Cell emerald primary, electric
+     cyan secondary, amber for funding/strategy, red reserved for Mayhem.
+     Everything layered on top stays frosted glass. */
+  --bg: #05070a;
   --bg-elevated: rgba(255, 255, 255, 0.045);
   --bg-card: rgba(255, 255, 255, 0.055);
   --border: rgba(255, 255, 255, 0.09);
   --border-strong: rgba(255, 255, 255, 0.16);
-  --text: #f3f1ea;
-  --text-dim: #a8a6b8;
-  --accent: #cda86a;
-  --accent-soft: #e8d4a3;
-  --accent-2: #8a7fd6;
+  --text: #eef4f0;
+  --text-dim: #97a3a0;
+  --accent: #22c55e;
+  --accent-soft: #6ee7b7;
+  --accent-2: #22d3ee;
   --success: #4ade80;
-  --danger: #f87171;
-  --warning: #eab976;
+  --danger: #ef4444;
+  --warning: #f2b747;
 
   /* action card category colors */
-  --cat-action: #4ade80;
-  --cat-deal: #7dd3fc;
-  --cat-special: #c084fc;
+  --cat-action: #22c55e;
+  --cat-deal: #22d3ee;
+  --cat-special: #f2b747;
 
   /* identity card category colors */
-  --id-market: #7dd3fc;
-  --id-customer: #eab976;
-  --id-mission: #b8a8f0;
-  --id-resources: #6ee7c4;
+  --id-market: #22d3ee;
+  --id-customer: #f2b747;
+  --id-mission: #22c55e;
+  --id-resources: #6ee7b7;
+
+  --mayhem-red: #ef4444;
 
   --radius: 18px;
   --shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
@@ -58,10 +61,10 @@ a { color: var(--accent); text-decoration: none; }
   inset: 0;
   z-index: -1;
   background:
-    radial-gradient(circle at 15% 8%, rgba(205, 168, 106, 0.16), transparent 45%),
-    radial-gradient(circle at 85% 15%, rgba(138, 127, 214, 0.16), transparent 50%),
-    radial-gradient(circle at 50% 100%, rgba(110, 231, 196, 0.08), transparent 55%),
-    linear-gradient(180deg, #0d0e15 0%, #0a0b10 55%, #08090d 100%);
+    radial-gradient(circle at 15% 8%, rgba(34, 197, 94, 0.14), transparent 45%),
+    radial-gradient(circle at 85% 15%, rgba(34, 211, 238, 0.13), transparent 50%),
+    radial-gradient(circle at 50% 100%, rgba(34, 197, 94, 0.07), transparent 55%),
+    linear-gradient(180deg, #090b0e 0%, #05070a 55%, #030405 100%);
 }
 .login-wrap::before {
   content: '';
@@ -69,9 +72,9 @@ a { color: var(--accent); text-decoration: none; }
   inset: 0;
   z-index: -1;
   background:
-    radial-gradient(circle at 20% 15%, rgba(205, 168, 106, 0.2), transparent 45%),
-    radial-gradient(circle at 82% 78%, rgba(138, 127, 214, 0.2), transparent 50%),
-    linear-gradient(180deg, #0d0e15 0%, #0a0b10 60%, #08090d 100%);
+    radial-gradient(circle at 20% 15%, rgba(34, 197, 94, 0.18), transparent 45%),
+    radial-gradient(circle at 82% 78%, rgba(34, 211, 238, 0.18), transparent 50%),
+    linear-gradient(180deg, #090b0e 0%, #05070a 60%, #030405 100%);
 }
 
 .topbar {
@@ -444,6 +447,16 @@ p { color: var(--text-dim); line-height: 1.45; margin: 4px 0; }
   position: relative;
 }
 .login-card { width: 100%; max-width: 380px; }
+.login-back {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--text-dim);
+  margin-bottom: 18px;
+  transition: color 0.15s ease;
+}
+.login-back:hover { color: var(--accent-soft); }
 .login-title {
   text-align: center;
   margin-bottom: 4px;
@@ -645,6 +658,29 @@ table.data-table th { color: var(--text-dim); font-weight: 600; font-size: 0.72r
 .mayhem-overlay-story { font-size: 1rem; margin-top: 10px; }
 .mayhem-overlay-effect { margin-top: 10px; color: var(--text); }
 .mayhem-event-pill { background: color-mix(in srgb, var(--danger) 20%, transparent); color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, transparent); }
+
+.mayhem-core-pulse {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  margin: 0 auto 6px;
+  background: radial-gradient(circle, rgba(239, 68, 68, 0.55), rgba(239, 68, 68, 0.05) 70%);
+  border: 1px solid color-mix(in srgb, var(--danger) 55%, transparent);
+  box-shadow: 0 0 40px rgba(239, 68, 68, 0.35);
+}
+.mayhem-state-pill {
+  display: inline-block;
+  margin-top: 16px;
+  padding: 8px 20px;
+  border-radius: 999px;
+  font-weight: 800;
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+  border: 1px solid transparent;
+}
+.mayhem-state-pill.state-safe { background: color-mix(in srgb, var(--success) 20%, transparent); color: var(--success); border-color: color-mix(in srgb, var(--success) 45%, transparent); }
+.mayhem-state-pill.state-protected { background: color-mix(in srgb, var(--accent-2) 20%, transparent); color: var(--accent-2); border-color: color-mix(in srgb, var(--accent-2) 45%, transparent); }
+.mayhem-state-pill.state-affected { background: color-mix(in srgb, var(--danger) 20%, transparent); color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, transparent); }
 
 /* ---------------------------------------------------------------------
    Player: Action Cards tab — glassmorphism gallery instead of a plain

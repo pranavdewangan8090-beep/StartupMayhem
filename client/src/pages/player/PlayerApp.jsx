@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import TopBar from '../../components/TopBar.jsx';
+import MayhemReveal from '../../components/MayhemReveal.jsx';
 import { useAuth } from '../../lib/AuthContext.jsx';
 import { useGameState } from '../../hooks/usePoll.js';
+import { useCrisisFeed } from '../../hooks/useCrisisFeed.js';
 import { areAllCardsRevealed, useRevealedCards } from '../../lib/revealedCards.js';
 import DashboardTab from './DashboardTab.jsx';
 import CardsTab from './CardsTab.jsx';
@@ -19,6 +21,7 @@ export default function PlayerApp() {
   const allRevealed = areAllCardsRevealed(revealed);
   const [tab, setTab] = useState(allRevealed ? 'dashboard' : 'cards');
   const { state, refreshNow } = useGameState(4000);
+  const { pendingReveal, dismiss } = useCrisisFeed(user?.teamId, 4000);
 
   // if cards aren't all revealed yet (or a stale tab choice becomes locked),
   // always land the player back on My Cards
@@ -33,6 +36,7 @@ export default function PlayerApp() {
 
   return (
     <div className="app-shell">
+      {pendingReveal && <MayhemReveal crisis={pendingReveal} onClose={dismiss} />}
       <TopBar />
       <div className="tabbar">
         {TABS.map((t) => {
