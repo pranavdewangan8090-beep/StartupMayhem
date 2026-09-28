@@ -20,17 +20,17 @@ after(async () => {
 
 test('GET /super-admin/toggles round-trips a flip back to its original value', { skip }, async () => {
   const before1 = await superAdmin.get('/super-admin/toggles');
-  const original = before1.body.marketplace_open;
+  const original = before1.body.card_play_open;
 
-  const flip = await superAdmin.post('/super-admin/toggles', { key: 'marketplace_open', value: !original });
+  const flip = await superAdmin.post('/super-admin/toggles', { key: 'card_play_open', value: !original });
   assert.equal(flip.status, 200);
   const after1 = await superAdmin.get('/super-admin/toggles');
-  assert.equal(after1.body.marketplace_open, !original);
+  assert.equal(after1.body.card_play_open, !original);
 
   // restore
-  await superAdmin.post('/super-admin/toggles', { key: 'marketplace_open', value: original });
+  await superAdmin.post('/super-admin/toggles', { key: 'card_play_open', value: original });
   const restored = await superAdmin.get('/super-admin/toggles');
-  assert.equal(restored.body.marketplace_open, original);
+  assert.equal(restored.body.card_play_open, original);
 });
 
 test('an unknown toggle key is rejected', { skip }, async () => {

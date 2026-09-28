@@ -84,12 +84,12 @@ test('R2 request cap: a 4th card request is rejected once 3 are held (one per ca
   const hand = await teamB.playerSession.get('/action-cards/hand');
   assert.equal(hand.body.length, 3);
 
-  // every category is now taken, so this should fail on CATEGORY_ALREADY_TAKEN
-  // before it would even reach the count check — both prove the 3-card cap holds
+  // fn_r2_request_card checks the 3-card count before the per-category
+  // check, so a 4th request hits R2_LIMIT_REACHED first either way
   const overflow = catalog.find((c) => c.category === 'action' && c.id !== catalog.find((x) => x.category === 'action').id);
   const { status, body } = await teamB.playerSession.post('/action-cards/request', { actionCardId: overflow.id, requestId: requestId() });
-  assert.equal(status, 409);
-  assert.equal(body.error, 'CATEGORY_ALREADY_TAKEN');
+  assert.equal(status, 403);
+  assert.equal(body.error, 'R2_LIMIT_REACHED');
 });
 
 test('playing an action/special card applies its effect and marks it used', { skip }, async () => {
