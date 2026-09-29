@@ -1,30 +1,37 @@
 :root {
-  /* Premium dark palette: deep charcoal-navy base, champagne-gold accent,
-     cool violet secondary. Everything layered on top is frosted glass. */
-  --bg: #0a0b10;
+  /* Brand identity: near-black base + the official E-Cell NIT Trichy gold
+     (#f0b800, sampled from the real logo) as the dominant accent. The
+     Mayhemverse palette (green/cyan/amber/red) supports it as secondary,
+     meaningful state color — it never replaces the brand. Everything
+     layered on top stays frosted glass. */
+  --bg: #05070a;
   --bg-elevated: rgba(255, 255, 255, 0.045);
   --bg-card: rgba(255, 255, 255, 0.055);
   --border: rgba(255, 255, 255, 0.09);
   --border-strong: rgba(255, 255, 255, 0.16);
-  --text: #f3f1ea;
-  --text-dim: #a8a6b8;
-  --accent: #cda86a;
-  --accent-soft: #e8d4a3;
-  --accent-2: #8a7fd6;
+  --text: #f4f1e8;
+  --text-dim: #a3a09a;
+  --brand-gold: #f0b800;
+  --brand-gold-soft: #ffd873;
+  --accent: var(--brand-gold);
+  --accent-soft: var(--brand-gold-soft);
+  --accent-2: #22d3ee;
   --success: #4ade80;
-  --danger: #f87171;
-  --warning: #eab976;
+  --danger: #ef4444;
+  --warning: #f2b747;
 
   /* action card category colors */
-  --cat-action: #4ade80;
-  --cat-deal: #7dd3fc;
-  --cat-special: #c084fc;
+  --cat-action: #22c55e;
+  --cat-deal: #22d3ee;
+  --cat-special: #f2b747;
 
   /* identity card category colors */
-  --id-market: #7dd3fc;
-  --id-customer: #eab976;
-  --id-mission: #b8a8f0;
-  --id-resources: #6ee7c4;
+  --id-market: #22d3ee;
+  --id-customer: #f2b747;
+  --id-mission: #22c55e;
+  --id-resources: #6ee7b7;
+
+  --mayhem-red: #ef4444;
 
   --radius: 18px;
   --shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
@@ -58,10 +65,10 @@ a { color: var(--accent); text-decoration: none; }
   inset: 0;
   z-index: -1;
   background:
-    radial-gradient(circle at 15% 8%, rgba(205, 168, 106, 0.16), transparent 45%),
-    radial-gradient(circle at 85% 15%, rgba(138, 127, 214, 0.16), transparent 50%),
-    radial-gradient(circle at 50% 100%, rgba(110, 231, 196, 0.08), transparent 55%),
-    linear-gradient(180deg, #0d0e15 0%, #0a0b10 55%, #08090d 100%);
+    radial-gradient(circle at 15% 8%, rgba(240, 184, 0, 0.14), transparent 45%),
+    radial-gradient(circle at 85% 15%, rgba(34, 211, 238, 0.13), transparent 50%),
+    radial-gradient(circle at 50% 100%, rgba(240, 184, 0, 0.07), transparent 55%),
+    linear-gradient(180deg, #090b0e 0%, #05070a 55%, #030405 100%);
 }
 .login-wrap::before {
   content: '';
@@ -69,9 +76,9 @@ a { color: var(--accent); text-decoration: none; }
   inset: 0;
   z-index: -1;
   background:
-    radial-gradient(circle at 20% 15%, rgba(205, 168, 106, 0.2), transparent 45%),
-    radial-gradient(circle at 82% 78%, rgba(138, 127, 214, 0.2), transparent 50%),
-    linear-gradient(180deg, #0d0e15 0%, #0a0b10 60%, #08090d 100%);
+    radial-gradient(circle at 20% 15%, rgba(240, 184, 0, 0.18), transparent 45%),
+    radial-gradient(circle at 82% 78%, rgba(34, 211, 238, 0.18), transparent 50%),
+    linear-gradient(180deg, #090b0e 0%, #05070a 60%, #030405 100%);
 }
 
 .topbar {
@@ -87,19 +94,21 @@ a { color: var(--accent); text-decoration: none; }
   -webkit-backdrop-filter: var(--glass-blur);
   border-bottom: 1px solid var(--border);
 }
-.topbar .brand { font-weight: 700; letter-spacing: 0.03em; font-size: 1.05rem; color: var(--text); }
+.topbar .brand { display: flex; align-items: center; gap: 8px; font-weight: 700; letter-spacing: 0.03em; font-size: 1.05rem; color: var(--text); }
 .topbar .brand span { color: var(--accent); font-weight: 700; }
-.topbar .logout-btn {
+.ecell-logo { display: block; object-fit: contain; flex-shrink: 0; }
+.logout-btn {
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid var(--border);
   color: var(--text-dim);
   padding: 7px 14px;
+  min-height: 44px;
   border-radius: 999px;
   font-size: 0.78rem;
   cursor: pointer;
   transition: border-color 0.15s ease, color 0.15s ease;
 }
-.topbar .logout-btn:hover { border-color: var(--border-strong); color: var(--text); }
+.logout-btn:hover { border-color: var(--border-strong); color: var(--text); }
 
 .tabbar {
   display: flex;
@@ -128,7 +137,7 @@ a { color: var(--accent); text-decoration: none; }
   transition: background 0.15s ease, color 0.15s ease;
 }
 .tabbar button.active {
-  background: linear-gradient(135deg, rgba(205, 168, 106, 0.22), rgba(138, 127, 214, 0.18));
+  background: linear-gradient(135deg, rgba(240, 184, 0, 0.22), rgba(34, 211, 238, 0.18));
   border-color: var(--border-strong);
   color: var(--text);
 }
@@ -272,8 +281,8 @@ p { color: var(--text-dim); line-height: 1.45; margin: 4px 0; }
   align-items: center;
   justify-content: center;
   background:
-    radial-gradient(circle at 30% 20%, rgba(205, 168, 106, 0.14), transparent 55%),
-    radial-gradient(circle at 75% 80%, rgba(138, 127, 214, 0.14), transparent 55%),
+    radial-gradient(circle at 30% 20%, rgba(240, 184, 0, 0.14), transparent 55%),
+    radial-gradient(circle at 75% 80%, rgba(34, 211, 238, 0.14), transparent 55%),
     linear-gradient(160deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
   gap: 14px;
 }
@@ -442,8 +451,52 @@ p { color: var(--text-dim); line-height: 1.45; margin: 4px 0; }
   justify-content: center;
   padding: 24px;
   position: relative;
+  overflow: hidden;
 }
-.login-card { width: 100%; max-width: 380px; }
+.login-card { position: relative; z-index: 1; width: 100%; max-width: 380px; }
+
+/* Ambient motion for utility pages that don't carry the full 3D hero —
+   drifting glow orbs + floating particles, CSS-only. */
+.ambient-field { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+.ambient-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(40px);
+  opacity: 0.55;
+  animation: ambient-drift 16s ease-in-out infinite;
+}
+.orb-gold { width: 320px; height: 320px; top: -80px; left: -60px; background: radial-gradient(circle, rgba(240, 184, 0, 0.5), transparent 70%); }
+.orb-cyan { width: 280px; height: 280px; bottom: -70px; right: -50px; background: radial-gradient(circle, rgba(34, 211, 238, 0.4), transparent 70%); animation-duration: 20s; animation-direction: reverse; }
+.ambient-particle {
+  position: absolute;
+  border-radius: 50%;
+  animation: ambient-float ease-in-out infinite;
+}
+.ambient-particle.tone-gold { background: var(--brand-gold); box-shadow: 0 0 8px rgba(240, 184, 0, 0.7); }
+.ambient-particle.tone-cyan { background: var(--accent-2); box-shadow: 0 0 8px rgba(34, 211, 238, 0.6); }
+
+@keyframes ambient-drift {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(40px, 30px) scale(1.08); }
+}
+@keyframes ambient-float {
+  0%, 100% { transform: translateY(0) translateX(0); opacity: 0.35; }
+  50% { transform: translateY(-22px) translateX(10px); opacity: 0.9; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ambient-orb, .ambient-particle { animation: none; opacity: 0.4; }
+}
+.login-back {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--text-dim);
+  margin-bottom: 18px;
+  transition: color 0.15s ease;
+}
+.login-back:hover { color: var(--accent-soft); }
+.login-brand-mark { display: flex; justify-content: center; margin-bottom: 12px; }
 .login-title {
   text-align: center;
   margin-bottom: 4px;
@@ -477,7 +530,7 @@ p { color: var(--text-dim); line-height: 1.45; margin: 4px 0; }
   transition: background 0.15s ease, color 0.15s ease;
 }
 .role-switch button.active {
-  background: linear-gradient(135deg, rgba(205, 168, 106, 0.25), rgba(138, 127, 214, 0.2));
+  background: linear-gradient(135deg, rgba(240, 184, 0, 0.25), rgba(34, 211, 238, 0.2));
   color: var(--text);
 }
 
@@ -494,7 +547,7 @@ p { color: var(--text-dim); line-height: 1.45; margin: 4px 0; }
 }
 .field input:focus, .field select:focus, .field textarea:focus {
   outline: none;
-  border-color: var(--accent);
+  border-color: var(--accent-2);
 }
 
 .error-text { color: var(--danger); font-size: 0.82rem; margin-top: 6px; }
@@ -514,14 +567,17 @@ table.data-table th { color: var(--text-dim); font-weight: 600; font-size: 0.72r
   display: flex;
   position: relative;
 }
+@media (max-width: 860px) {
+  .super-shell { flex-direction: column; }
+}
 .super-shell::before {
   content: '';
   position: fixed;
   inset: 0;
   z-index: -1;
   background:
-    radial-gradient(circle at 12% 10%, rgba(205, 168, 106, 0.14), transparent 45%),
-    radial-gradient(circle at 88% 20%, rgba(138, 127, 214, 0.14), transparent 50%),
+    radial-gradient(circle at 12% 10%, rgba(240, 184, 0, 0.14), transparent 45%),
+    radial-gradient(circle at 88% 20%, rgba(34, 211, 238, 0.14), transparent 50%),
     linear-gradient(180deg, #0d0e15 0%, #0a0b10 55%, #08090d 100%);
 }
 .super-sidebar {
@@ -539,7 +595,7 @@ table.data-table th { color: var(--text-dim); font-weight: 600; font-size: 0.72r
   top: 0;
   height: 100vh;
 }
-.super-brand { font-weight: 700; font-size: 1.15rem; letter-spacing: 0.02em; color: var(--text); padding: 0 10px; }
+.super-brand { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 1.15rem; letter-spacing: 0.02em; color: var(--text); padding: 0 10px; }
 .super-brand span { color: var(--accent); }
 .super-brand-sub { color: var(--text-dim); font-size: 0.75rem; padding: 0 10px 20px; text-transform: uppercase; letter-spacing: 0.06em; }
 .super-nav { display: flex; flex-direction: column; gap: 4px; flex: 1; }
@@ -549,6 +605,7 @@ table.data-table th { color: var(--text-dim); font-weight: 600; font-size: 0.72r
   border: 1px solid transparent;
   color: var(--text-dim);
   padding: 11px 14px;
+  min-height: 44px;
   border-radius: 10px;
   font-size: 0.88rem;
   font-weight: 600;
@@ -557,7 +614,7 @@ table.data-table th { color: var(--text-dim); font-weight: 600; font-size: 0.72r
 }
 .super-nav button:hover { background: rgba(255, 255, 255, 0.04); color: var(--text); }
 .super-nav button.active {
-  background: linear-gradient(135deg, rgba(205, 168, 106, 0.22), rgba(138, 127, 214, 0.18));
+  background: linear-gradient(135deg, rgba(240, 184, 0, 0.22), rgba(34, 211, 238, 0.18));
   border-color: var(--border-strong);
   color: var(--text);
 }
@@ -567,6 +624,40 @@ table.data-table th { color: var(--text-dim); font-weight: 600; font-size: 0.72r
 .super-main-header { margin-bottom: 20px; }
 .super-main-header h1 { font-size: 1.6rem; }
 .super-main-body { max-width: 1180px; }
+
+/* Mobile/tablet: the fixed 240px sidebar squeezed the whole app sideways —
+   collapse it into a sticky top bar with a horizontally scrolling nav
+   instead of a column that never fits. */
+@media (max-width: 860px) {
+  .super-sidebar {
+    width: 100%;
+    height: auto;
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+    padding: 12px 14px;
+    gap: 8px;
+    position: sticky;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    z-index: 25;
+  }
+  .super-brand { padding: 0; flex: 0 0 auto; font-size: 1rem; }
+  .super-brand-sub { display: none; }
+  .super-nav {
+    flex: 1 1 100%;
+    flex-direction: row;
+    overflow-x: auto;
+    gap: 6px;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .super-nav::-webkit-scrollbar { display: none; }
+  .super-nav button { flex: 0 0 auto; white-space: nowrap; }
+  .super-logout { margin: 0 0 0 auto; width: auto; flex: 0 0 auto; }
+  .super-main { padding: 20px 16px 40px; }
+  .super-main-header h1 { font-size: 1.3rem; }
+}
 
 .desktop-grid {
   display: grid;
@@ -645,6 +736,29 @@ table.data-table th { color: var(--text-dim); font-weight: 600; font-size: 0.72r
 .mayhem-overlay-story { font-size: 1rem; margin-top: 10px; }
 .mayhem-overlay-effect { margin-top: 10px; color: var(--text); }
 .mayhem-event-pill { background: color-mix(in srgb, var(--danger) 20%, transparent); color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, transparent); }
+
+.mayhem-core-pulse {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  margin: 0 auto 6px;
+  background: radial-gradient(circle, rgba(239, 68, 68, 0.55), rgba(239, 68, 68, 0.05) 70%);
+  border: 1px solid color-mix(in srgb, var(--danger) 55%, transparent);
+  box-shadow: 0 0 40px rgba(239, 68, 68, 0.35);
+}
+.mayhem-state-pill {
+  display: inline-block;
+  margin-top: 16px;
+  padding: 8px 20px;
+  border-radius: 999px;
+  font-weight: 800;
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+  border: 1px solid transparent;
+}
+.mayhem-state-pill.state-safe { background: color-mix(in srgb, var(--success) 20%, transparent); color: var(--success); border-color: color-mix(in srgb, var(--success) 45%, transparent); }
+.mayhem-state-pill.state-protected { background: color-mix(in srgb, var(--accent-2) 20%, transparent); color: var(--accent-2); border-color: color-mix(in srgb, var(--accent-2) 45%, transparent); }
+.mayhem-state-pill.state-affected { background: color-mix(in srgb, var(--danger) 20%, transparent); color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, transparent); }
 
 /* ---------------------------------------------------------------------
    Player: Action Cards tab — glassmorphism gallery instead of a plain

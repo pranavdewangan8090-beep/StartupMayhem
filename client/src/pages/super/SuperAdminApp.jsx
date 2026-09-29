@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../../lib/AuthContext.jsx';
+import ECellLogo from '../../components/ECellLogo.jsx';
 import TeamResourcePanel from '../../components/TeamResourcePanel.jsx';
 import ControlRoomTab from './ControlRoomTab.jsx';
 import ScoresTab from './ScoresTab.jsx';
@@ -20,7 +21,7 @@ export default function SuperAdminApp() {
   return (
     <div className="super-shell">
       <aside className="super-sidebar">
-        <div className="super-brand">Startup<span>Mayhem</span></div>
+        <div className="super-brand"><ECellLogo size={28} /> Startup<span>Mayhem</span></div>
         <div className="super-brand-sub">Super Admin</div>
         <nav className="super-nav">
           {TABS.map((t) => (
