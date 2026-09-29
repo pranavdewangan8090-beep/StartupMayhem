@@ -20,27 +20,33 @@ export default function TradePanel() {
   const toast = useToast();
 
   async function load() {
-    const [t, cr, status] = await Promise.all([
-      call(supabase.rpc('fn_admin_teams')),
-      call(supabase.rpc('fn_admin_crisis_list')),
-      call(supabase.rpc('fn_trade_feature_status')),
-    ]);
-    setTeams(t);
-    setCrises(cr.filter((c) => c.is_triggered));
-    setTradeStatus(Array.isArray(status) ? status[0] : status);
+    try {
+      const [t, cr, status] = await Promise.all([
+        call(supabase.rpc('fn_admin_teams')),
+        call(supabase.rpc('fn_admin_crisis_list')),
+        call(supabase.rpc('fn_trade_feature_status')),
+      ]);
+      setTeams(t);
+      setCrises(cr.filter((c) => c.is_triggered));
+      setTradeStatus(Array.isArray(status) ? status[0] : status);
+    } catch (err) {
+      toast(err instanceof ApiError ? err.message : 'Could not load teams.', 'error');
+    }
   }
   useEffect(() => { load(); }, []);
 
   useEffect(() => {
     if (!form.teamAId) { setTeamACards([]); return; }
     call(supabase.rpc('fn_admin_team_cards', { p_team_id: Number(form.teamAId) }))
-      .then((cards) => setTeamACards(cards.filter((c) => c.status === 'held')));
+      .then((cards) => setTeamACards(cards.filter((c) => c.status === 'held')))
+      .catch((err) => toast(err instanceof ApiError ? err.message : "Could not load team A's cards.", 'error'));
   }, [form.teamAId]);
 
   useEffect(() => {
     if (!form.teamBId) { setTeamBCards([]); return; }
     call(supabase.rpc('fn_admin_team_cards', { p_team_id: Number(form.teamBId) }))
-      .then((cards) => setTeamBCards(cards.filter((c) => c.status === 'held')));
+      .then((cards) => setTeamBCards(cards.filter((c) => c.status === 'held')))
+      .catch((err) => toast(err instanceof ApiError ? err.message : "Could not load team B's cards.", 'error'));
   }, [form.teamBId]);
 
   const enabled = tradeStatus?.enabled;

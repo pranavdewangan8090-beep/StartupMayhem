@@ -34,28 +34,36 @@ export default function ControlRoomTab() {
   const toast = useToast();
 
   async function load() {
-    const [t, cr, tt] = await Promise.all([
-      call(supabase.rpc('fn_super_toggles_get')),
-      call(supabase.rpc('fn_admin_crisis_list')),
-      call(supabase.rpc('fn_super_trade_toggles_all')),
-    ]);
-    setToggles(t);
-    setCrises(cr);
-    setTradeToggles(tt);
-    const firstTriggered = cr.find((c) => c.is_triggered)?.id ?? null;
-    const nextSelected = selectedCrisisId ?? firstTriggered;
-    setSelectedCrisisId(nextSelected);
-    if (nextSelected) await loadCrisisDetail(nextSelected);
+    try {
+      const [t, cr, tt] = await Promise.all([
+        call(supabase.rpc('fn_super_toggles_get')),
+        call(supabase.rpc('fn_admin_crisis_list')),
+        call(supabase.rpc('fn_super_trade_toggles_all')),
+      ]);
+      setToggles(t);
+      setCrises(cr);
+      setTradeToggles(tt);
+      const firstTriggered = cr.find((c) => c.is_triggered)?.id ?? null;
+      const nextSelected = selectedCrisisId ?? firstTriggered;
+      setSelectedCrisisId(nextSelected);
+      if (nextSelected) await loadCrisisDetail(nextSelected);
+    } catch (err) {
+      toast(err instanceof ApiError ? err.message : 'Could not load the control room.', 'error');
+    }
   }
   useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function loadCrisisDetail(crisisId) {
-    const [status, useful] = await Promise.all([
-      call(supabase.rpc('fn_admin_crisis_status', { p_crisis_id: crisisId })),
-      call(supabase.rpc('fn_admin_crisis_useful_cards', { p_crisis_id: crisisId })),
-    ]);
-    setCrisisStatus(status);
-    setUsefulCards(useful);
+    try {
+      const [status, useful] = await Promise.all([
+        call(supabase.rpc('fn_admin_crisis_status', { p_crisis_id: crisisId })),
+        call(supabase.rpc('fn_admin_crisis_useful_cards', { p_crisis_id: crisisId })),
+      ]);
+      setCrisisStatus(status);
+      setUsefulCards(useful);
+    } catch (err) {
+      toast(err instanceof ApiError ? err.message : 'Could not load crisis details.', 'error');
+    }
   }
 
   async function selectCrisis(id) {
