@@ -3,12 +3,6 @@ import Modal from './Modal.jsx';
 import { supabase, call, ApiError } from '../lib/supabase.js';
 import { useToast } from '../lib/ToastContext.jsx';
 
-/**
- * Super Admin only: the team list plus the resource-adjustment and
- * decision-points modals. Admins can no longer change a team's resources or
- * decision points (Round 3 update) — they process trades instead, from
- * AdminApp's Trade panel.
- */
 export default function TeamResourcePanel() {
   const [teams, setTeams] = useState([]);
   const [modal, setModal] = useState(null);

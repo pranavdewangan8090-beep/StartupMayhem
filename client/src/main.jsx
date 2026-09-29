@@ -7,7 +7,6 @@ import { ToastProvider } from './lib/ToastContext.jsx';
 import './index.css';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
     <BrowserRouter>
       <ToastProvider>
         <AuthProvider>
@@ -15,5 +14,4 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         </AuthProvider>
       </ToastProvider>
     </BrowserRouter>
-  </React.StrictMode>
 );
