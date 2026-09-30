@@ -17,11 +17,15 @@ function formatDelta(applied) {
  * Full-screen Mayhem reveal, driven entirely by the real crisis row from
  * fn_crisis_public() (title, description, tier, applied — the team's own
  * Market-card-determined tier and the effect already applied to their
- * resources) — never faked client-side. Deliberately shows ONLY the
- * player's own tier + effect, not a breakdown of all 4 tiers — that
- * overflowed the screen and wasn't the point of the reveal. Plays a staged
- * GSAP sequence: core pulse → card appears → title → effect → tier state.
- * Reduced-motion users get the final state immediately, no animation.
+ * resources) — never faked client-side. For players this shows ONLY their
+ * own tier + effect, not a breakdown of all 4 tiers — that overflowed the
+ * screen and wasn't the point of the reveal. An optional `crisis.tierBreakdown`
+ * (an array of { tier, applied }, one per tier that has data) adds an
+ * "Effects by Tier" list below — used only by the Super Admin's replay of
+ * this same card, which has no personal team and wants the full picture.
+ * Plays a staged GSAP sequence: core pulse → card appears → title → effect
+ * → tier state. Reduced-motion users get the final state immediately, no
+ * animation.
  */
 export default function MayhemReveal({ crisis, onClose }) {
   const coreRef = useRef(null);
@@ -66,6 +70,17 @@ export default function MayhemReveal({ crisis, onClose }) {
           <p className="mayhem-overlay-effect">
             <b>Effect on your company:</b> {formatDelta(crisis.applied)}
           </p>
+        )}
+        {crisis.tierBreakdown?.length > 0 && (
+          <div className="mayhem-affected-teams">
+            <div className="mayhem-tiers-heading">Effects by Tier</div>
+            {crisis.tierBreakdown.map((t) => (
+              <div className="mayhem-affected-row" key={t.tier}>
+                <span className={`pill tier-${t.tier}`}>{TIER_LABEL[t.tier]}</span>
+                <span>{formatDelta(t.applied)}</span>
+              </div>
+            ))}
+          </div>
         )}
         <button className="btn btn-primary btn-block" style={{ marginTop: 20 }} onClick={onClose}>
           Acknowledge

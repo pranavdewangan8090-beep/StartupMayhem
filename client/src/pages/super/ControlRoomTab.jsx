@@ -11,6 +11,16 @@ const TOGGLES = [
 ];
 
 const TIER_LABEL = { hit_hard: 'Hit Hard', hit: 'Hit', unaffected: 'Unaffected', gains: 'Gains' };
+const TIER_ORDER = ['hit_hard', 'hit', 'unaffected', 'gains'];
+
+// crisis_market_tiers fixes one delta per tier per crisis, so any team row
+// carrying a given tier has the delta for that whole tier — no separate
+// per-tier RPC needed, just dedupe what fn_admin_crisis_effects returned.
+function tierBreakdownFrom(rows) {
+  return TIER_ORDER
+    .map((tier) => ({ tier, applied: rows.find((r) => r.tier === tier)?.applied }))
+    .filter((t) => t.applied);
+}
 
 function formatDelta(applied) {
   if (!applied) return '—';
@@ -58,9 +68,12 @@ export default function ControlRoomTab() {
 
   async function loadCrisisDetail(crisisId) {
     try {
-      setCrisisEffects(await call(supabase.rpc('fn_admin_crisis_effects', { p_crisis_id: crisisId })));
+      const rows = await call(supabase.rpc('fn_admin_crisis_effects', { p_crisis_id: crisisId }));
+      setCrisisEffects(rows);
+      return rows;
     } catch (err) {
       toast(err instanceof ApiError ? err.message : 'Could not load crisis details.', 'error');
+      return [];
     }
   }
 
@@ -91,9 +104,15 @@ export default function ControlRoomTab() {
       toast(`Crisis triggered: ${triggered.title} — effects applied to every team.`, 'success');
       await load();
       setSelectedCrisisId(triggered.id);
-      await loadCrisisDetail(triggered.id);
-      // Show the same full-screen card every player's phone just got.
-      setRevealCrisis({ crisis_id: triggered.id, title: triggered.title, description: triggered.description });
+      const rows = await loadCrisisDetail(triggered.id);
+      // Show the same full-screen card every player's phone just got, plus
+      // the full hit_hard/hit/unaffected/gains breakdown players don't see.
+      setRevealCrisis({
+        crisis_id: triggered.id,
+        title: triggered.title,
+        description: triggered.description,
+        tierBreakdown: tierBreakdownFrom(rows),
+      });
     } catch (err) {
       setConfirmCrisis(null);
       toast(err instanceof ApiError ? err.message : 'Could not trigger the next crisis.', 'error');
@@ -190,7 +209,12 @@ export default function ControlRoomTab() {
             <h2>Crisis {selectedCrisis.number}: {selectedCrisis.title}</h2>
             <button
               className="btn btn-ghost btn-sm"
-              onClick={() => setRevealCrisis({ crisis_id: selectedCrisis.id, title: selectedCrisis.title, description: selectedCrisis.description })}
+              onClick={() => setRevealCrisis({
+                crisis_id: selectedCrisis.id,
+                title: selectedCrisis.title,
+                description: selectedCrisis.description,
+                tierBreakdown: tierBreakdownFrom(crisisEffects),
+              })}
             >
               View Card
             </button>
