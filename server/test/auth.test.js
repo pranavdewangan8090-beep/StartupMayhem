@@ -62,7 +62,10 @@ describe('auth (fn_login / fn_auth_user)', () => {
     );
   });
 
-  test('re-login bumps session_version and invalidates the old token', async () => {
+  // 030_allow_multi_session_login.sql: fn_login no longer bumps
+  // session_version, specifically so a second (or third...) screen logging
+  // in with the same credentials doesn't kick out an earlier one.
+  test('logging in again does NOT invalidate an earlier session — many screens can share one login', async () => {
     const player = pick(creds, 'player');
     const first = new Session();
     await first.login('player', player.loginId, player.password);
@@ -70,13 +73,39 @@ describe('auth (fn_login / fn_auth_user)', () => {
     const second = new Session();
     await second.login('player', player.loginId, player.password);
 
-    const rows = await first.rpc('fn_auth_user');
-    assert.deepEqual(rows, [], 'old token should no longer resolve an identity');
+    const third = new Session();
+    await third.login('player', player.loginId, player.password);
 
-    // leave the account logged in as `second` was the last real login; log
-    // back in once more so this test doesn't itself invalidate a sibling
-    // test file's already-cached session for the same account.
-    await first.login('player', player.loginId, player.password);
+    const [firstMe, secondMe, thirdMe] = await Promise.all([
+      first.rpc('fn_auth_user'),
+      second.rpc('fn_auth_user'),
+      third.rpc('fn_auth_user'),
+    ]);
+    assert.ok(firstMe[0], 'the first session should still resolve an identity');
+    assert.ok(secondMe[0]);
+    assert.ok(thirdMe[0]);
+    assert.equal(firstMe[0].team_id, secondMe[0].team_id);
+    assert.equal(firstMe[0].team_id, thirdMe[0].team_id);
+  });
+
+  test('resetting a password still invalidates every existing session for that account', async () => {
+    const superAdmin = new Session();
+    const sa = pick(creds, 'super_admin');
+    await superAdmin.login('super_admin', sa.loginId, sa.password);
+    const team = await superAdmin.rpc('fn_super_add_team', { p_team_code: `TEST-RESETKICK-${Date.now()}` });
+    try {
+      const oldSession = new Session();
+      await oldSession.login('player', team.loginId, team.password);
+      assert.ok((await oldSession.rpc('fn_auth_user'))[0]);
+
+      const [{ user_id: userId }] = await oldSession.rpc('fn_auth_user');
+      await superAdmin.rpc('fn_super_reset_password', { p_user_id: userId });
+
+      const rows = await oldSession.rpc('fn_auth_user');
+      assert.deepEqual(rows, [], 'the pre-reset session should no longer resolve an identity');
+    } finally {
+      await deleteTestTeam(team.teamId);
+    }
   });
 
   describe('login rate limiting (fn_login / login_attempts)', () => {

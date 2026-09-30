@@ -12,8 +12,11 @@ npm install
 SM_ALLOW_LIVE_TESTS=1 npm test
 ```
 
-The `SM_ALLOW_LIVE_TESTS=1` guard exists because logging in as a real seeded
-account logs that account's phone out — **never run this during the event.**
+The `SM_ALLOW_LIVE_TESTS=1` guard exists because this suite logs in as real
+seeded accounts and briefly flips shared `game_state` toggles — **never run
+this during the event.** (Logins no longer kick each other out — see
+`030_allow_multi_session_login.sql` — but the toggle flips and the account
+password-reset test still touch real, shared state.)
 
 Requires `server/scripts/credentials.local.csv` to exist (run
 `node scripts/seedUsers.js` first) — the suite logs in as real seeded
@@ -22,9 +25,8 @@ accounts rather than maintaining separate fixtures.
 ## Safety model
 
 - Tests run with `--test-concurrency=1` (files run strictly one after
-  another), both so no two files ever race a `fn_login` for the same account
-  (which would invalidate each other's session via `session_version`) and so
-  global `game_state` toggle flips in one file can't race another's.
+  another) so global `game_state` toggle flips in one file can't race
+  another's.
 - Anything that mutates game data does so on a **disposable team** created
   via `fn_super_add_team` (`TEST-...` team codes) and permanently deleted via
   `db.js`'s direct-Postgres `deleteTestTeam()` in an `after()` hook — never on

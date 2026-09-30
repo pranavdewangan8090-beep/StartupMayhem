@@ -99,9 +99,12 @@ Realtime would add on venue WiFi.
   letting a player `SELECT` their own team row would also let them query
   hidden columns (like `decision_points`) via `?select=`. Every admin/super
   admin RPC additionally checks the caller's role via `fn_require_role()`.
-- One active login per team: logging in again immediately invalidates the
-  previous session's token (`session_version` bump), even if that phone still
-  has the old JWT.
+- Multiple simultaneous logins are allowed per account — logging in on a
+  second screen does not kick out the first (`session_version` is not
+  bumped on login). Resetting a password or deactivating the account still
+  invalidates every existing session for it immediately, via
+  `session_version`/`is_active` respectively — those are separate,
+  intentional mechanisms, not the login flow.
 - Every game rule (the 3-replacement cap, the 3-action-card cap, resource
   caps/floors, deal-card ownership checks) is enforced inside a Postgres
   function with row locks — never trusted from the client, and safe against
@@ -125,7 +128,7 @@ them.
 
 ## Tests
 
-`server/test/` runs against the **live** Supabase project and logs in as real
-seeded accounts (which logs that team's phone out), so it refuses to run
-unless `SM_ALLOW_LIVE_TESTS=1` is set. Never run it during the event. See
-`server/test/README.md`.
+`server/test/` runs against the **live** Supabase project, logging in as
+real seeded accounts and mutating shared `game_state` toggles, so it
+refuses to run unless `SM_ALLOW_LIVE_TESTS=1` is set. Never run it during
+the event. See `server/test/README.md`.
