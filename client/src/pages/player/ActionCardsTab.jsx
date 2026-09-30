@@ -5,30 +5,6 @@ import Modal from '../../components/Modal.jsx';
 
 const CAT_LABEL = { action: 'Special Card', deal: 'Deal', special: 'Action Card' };
 
-// Matches server/sql/027_round_mechanics.sql's fn_expire_stale_deal_plays —
-// a pending deal is auto-rejected 2 minutes after it was proposed. This is
-// purely a display countdown; the server enforces the actual expiry
-// whenever the offer is next read or acted on, so this can be a few
-// seconds stale without anything breaking.
-const DEAL_OFFER_TTL_MS = 2 * 60 * 1000;
-
-function secondsLeft(createdAt) {
-  const deadline = new Date(createdAt).getTime() + DEAL_OFFER_TTL_MS;
-  return Math.max(0, Math.round((deadline - Date.now()) / 1000));
-}
-
-function Countdown({ createdAt }) {
-  const [seconds, setSeconds] = useState(() => secondsLeft(createdAt));
-  useEffect(() => {
-    const id = setInterval(() => setSeconds(secondsLeft(createdAt)), 1000);
-    return () => clearInterval(id);
-  }, [createdAt]);
-  if (seconds <= 0) return <span className="status-text warning-text">Expiring…</span>;
-  const m = Math.floor(seconds / 60);
-  const s = String(seconds % 60).padStart(2, '0');
-  return <span className={seconds <= 20 ? 'warning-text' : 'status-text'}>{m}:{s} left</span>;
-}
-
 export default function ActionCardsTab({ gameState, onChanged }) {
   const [hand, setHand] = useState([]);
   const [teams, setTeams] = useState([]);
@@ -81,7 +57,7 @@ export default function ActionCardsTab({ gameState, onChanged }) {
         p_partner_team_id: Number(selectedTeamId),
         p_request_id: newRequestId(),
       }));
-      toast('Deal proposed — they have 2 minutes to respond.', 'success');
+      toast('Deal proposed — waiting for their response.', 'success');
       setPlayTarget(null);
       setSelectedTeamId('');
       await loadAll();
@@ -134,7 +110,6 @@ export default function ActionCardsTab({ gameState, onChanged }) {
               <div key={d.id} className="action-card-tile cat-deal">
                 <div className="name">{d.name} — from {d.from_team_code}</div>
                 <div className="effect">{d.effect_text}</div>
-                <Countdown createdAt={d.created_at} />
                 <div className="row">
                   <button className="btn btn-success btn-sm" disabled={busy} onClick={() => respondDeal(d.id, true)}>Accept</button>
                   <button className="btn btn-danger btn-sm" disabled={busy} onClick={() => respondDeal(d.id, false)}>Reject</button>
@@ -148,7 +123,7 @@ export default function ActionCardsTab({ gameState, onChanged }) {
       <div className="card-surface section">
         <h2>Your Special Cards ({hand.filter((c) => c.status !== 'used').length}/3)</h2>
         <p>You were issued one Special, one Deal and one Action card at the start of the game. You can exchange one of these for a different card during Round 3, through an admin-processed trade — a Deal card can only be traded for another Deal card, and only cards you haven't used yet can be traded.</p>
-        <p className="admin-card-hint">A Deal card only works as a pair: you propose to one team at a time (2 minutes to respond, then it auto-expires), and it only completes if they also still have their own Deal card to accept with — both cards' effects then apply to both teams.</p>
+        <p className="admin-card-hint">A Deal card only works as a pair: you propose to one team at a time, and it only completes if they also still have their own Deal card to accept with — both cards' effects then apply to both teams.</p>
         {hand.length === 0 && <p>Loading your cards…</p>}
         <div className="action-grid">
           {hand.map((c) => (
@@ -162,14 +137,9 @@ export default function ActionCardsTab({ gameState, onChanged }) {
                     Awaiting response{outgoingByCard[c.id] ? ` from ${outgoingByCard[c.id].to_team_code}` : ''}
                   </p>
                   {outgoingByCard[c.id] && (
-                    <>
-                      <Countdown createdAt={outgoingByCard[c.id].created_at} />
-                      <div>
-                        <button className="btn btn-ghost btn-sm" disabled={busy} onClick={() => cancelDeal(outgoingByCard[c.id].id)}>
-                          Withdraw offer
-                        </button>
-                      </div>
-                    </>
+                    <button className="btn btn-ghost btn-sm" disabled={busy} onClick={() => cancelDeal(outgoingByCard[c.id].id)}>
+                      Withdraw offer
+                    </button>
                   )}
                 </div>
               )}
@@ -193,7 +163,7 @@ export default function ActionCardsTab({ gameState, onChanged }) {
         <Modal onClose={() => setPlayTarget(null)}>
           <h2>Choose a partner</h2>
           <p>{playTarget.card.name}</p>
-          <p className="admin-card-hint">They'll have 2 minutes to accept using their own Deal card. If they don't have one available, this is refused immediately.</p>
+          <p className="admin-card-hint">If they don't have their own Deal card available, this is refused immediately.</p>
           <div className="field">
             <select value={selectedTeamId} onChange={(e) => setSelectedTeamId(e.target.value)}>
               <option value="">Select a team…</option>

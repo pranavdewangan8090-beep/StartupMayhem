@@ -1,5 +1,6 @@
-// server/sql/027_round_mechanics.sql: card supply cap, paired deal cards
-// with expiry, and team merging.
+// server/sql/027_round_mechanics.sql (as amended by 029, which removed the
+// deal-offer expiry timer): card supply cap, paired deal cards, and team
+// merging.
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';

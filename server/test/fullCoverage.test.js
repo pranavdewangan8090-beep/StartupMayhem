@@ -249,7 +249,7 @@ describe('4. Playing Special/Action cards', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 5. Player: deal cards — propose, accept (paired), reject, cancel, expiry
+// 5. Player: deal cards — propose, accept (paired), reject, cancel
 // ---------------------------------------------------------------------------
 // Tests run in this exact order because deal cards are consumed as the
 // block progresses (there's no "reset" between tests in a describe block).
@@ -257,25 +257,22 @@ describe('4. Playing Special/Action cards', () => {
 // operations that always return it to 'held' — so both stay untouched right
 // up until the final pairing test, which deliberately consumes B and C's
 // cards. That leaves A (still held) as the one team the "no card available"
-// test can aim at B or C with. A fourth team, D, exists purely for the
-// expiry test so it doesn't need to borrow a card from anyone else's story.
+// test can aim at B or C with.
 describe('5. Deal cards', () => {
-  let teamA, teamB, teamC, teamD, playerA, playerB, playerC, playerD;
+  let teamA, teamB, teamC, playerA, playerB, playerC;
 
   before(async () => {
     teamA = await superAdmin.rpc('fn_super_add_team', { p_team_code: `TEST-FULL-DEAL-A-${Date.now()}` });
     teamB = await superAdmin.rpc('fn_super_add_team', { p_team_code: `TEST-FULL-DEAL-B-${Date.now()}` });
     teamC = await superAdmin.rpc('fn_super_add_team', { p_team_code: `TEST-FULL-DEAL-C-${Date.now()}` });
-    teamD = await superAdmin.rpc('fn_super_add_team', { p_team_code: `TEST-FULL-DEAL-D-${Date.now()}` });
     playerA = new Session(); await playerA.login('player', teamA.loginId, teamA.password);
     playerB = new Session(); await playerB.login('player', teamB.loginId, teamB.password);
     playerC = new Session(); await playerC.login('player', teamC.loginId, teamC.password);
-    playerD = new Session(); await playerD.login('player', teamD.loginId, teamD.password);
     // same reasoning as section 4 — some deal cards cost real Cash on
     // either side, and a paired deal can land costs from both cards on one
     // team, so top up everyone rather than let a random low-cash deal make
     // this test flaky
-    for (const t of [teamA, teamB, teamC, teamD]) {
+    for (const t of [teamA, teamB, teamC]) {
       await superAdmin.rpc('fn_admin_adjust_resources', { p_team_id: t.teamId, p_delta: { cash_l: 100 } });
     }
   });
@@ -284,7 +281,6 @@ describe('5. Deal cards', () => {
     await deleteTestTeam(teamA.teamId);
     await deleteTestTeam(teamB.teamId);
     await deleteTestTeam(teamC.teamId);
-    await deleteTestTeam(teamD.teamId);
   });
 
   test('1. cannot target your own team', async () => {
@@ -344,26 +340,7 @@ describe('5. Deal cards', () => {
     assert.equal((await playerA.rpc('fn_player_hand')).find((c) => c.id === dealA.id).status, 'held');
   });
 
-  test('5. a pending offer auto-expires after its TTL', async () => {
-    const handA = await playerA.rpc('fn_player_hand');
-    const dealA = handA.find((c) => c.category === 'deal' && c.status === 'held');
-    const play = await playerA.rpc('fn_play_deal_card', { p_team_action_card_id: dealA.id, p_partner_team_id: teamD.teamId, p_request_id: rid() });
-
-    // fast-forward past the 2-minute TTL directly in the DB rather than
-    // sleeping the test for real
-    await query(`update card_plays set created_at = now() - interval '3 minutes' where id = $1`, [play.id]);
-
-    const incoming = await playerD.rpc('fn_deals_incoming'); // lazily expires stale offers
-    assert.ok(!incoming.some((d) => String(d.id) === String(play.id)));
-    assert.equal((await playerA.rpc('fn_player_hand')).find((c) => c.id === dealA.id).status, 'held', 'the card should have returned to held on expiry');
-
-    await assert.rejects(
-      () => playerD.rpc('fn_respond_deal_card', { p_card_play_id: play.id, p_accept: true, p_request_id: rid() }),
-      (err) => err.message === 'DEAL_ALREADY_RESOLVED'
-    );
-  });
-
-  test('6. accepting pairs both cards: both consumed, both sides’ resources move', async () => {
+  test('5. accepting pairs both cards: both consumed, both sides’ resources move', async () => {
     const handBBefore = await playerB.rpc('fn_player_hand');
     const handCBefore = await playerC.rpc('fn_player_hand');
     const dealB = handBBefore.find((c) => c.category === 'deal');
@@ -384,7 +361,7 @@ describe('5. Deal cards', () => {
     assert.ok(changed(statusBBefore, statusBAfter) || changed(statusCBefore, statusCAfter));
   });
 
-  test('7. cannot propose to a team with no held deal card of their own', async () => {
+  test('6. cannot propose to a team with no held deal card of their own', async () => {
     // teamC's deal card was just consumed above; A's is still held from
     // test 4's cleanup
     const handA = await playerA.rpc('fn_player_hand');
