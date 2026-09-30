@@ -97,7 +97,7 @@ function loadExistingCredentials() {
 
 async function pickRandomCardId(client, category, exclude = []) {
   const { rows } = await client.query(
-    `select id from identity_cards where category = $1 and id <> all($2::int[]) order by random() limit 1`,
+    `select id from identity_cards where category = $1 and id <> all($2::int[]) and is_active order by random() limit 1`,
     [category, exclude]
   );
   return rows[0].id;
