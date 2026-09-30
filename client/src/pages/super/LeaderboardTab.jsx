@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react';
 import { supabase, call, ApiError } from '../../lib/supabase.js';
 import { useToast } from '../../lib/ToastContext.jsx';
 
-// Resource Score (30%) + Decision Score (70%) + Secret Mission bonus, per the
-// Point System doc — same formula the old Express /super-admin/leaderboard
-// route computed server-side; moved here since it's pure display math with
-// no security stakes, computed from fn_super_leaderboard_raw()'s columns.
+// Total = Resource Score (100%) + Secret Mission bonus. Decision Points
+// were removed from scoring entirely — they were a hidden, crisis-driven
+// number nobody could see the reasoning behind, so the game no longer
+// tracks or displays them. Resource Score itself is unchanged: 30% Cash +
+// 30% Customers + 20% Reputation + 20% Innovation, each already scaled
+// 0-100 with the same caps as before (₹10M cash, 200k customers).
 function scoreLeaderboard(rows) {
   const scored = rows.map((r) => {
     const x = Math.min(r.cash_l / 10, 10);
@@ -15,18 +17,15 @@ function scoreLeaderboard(rows) {
     const reputationScore = (r.reputation / 5) * 100;
     const innovationScore = (r.innovation / 10) * 100;
     const resourceScore = 0.3 * cashScore + 0.3 * customerScore + 0.2 * reputationScore + 0.2 * innovationScore;
-    const decisionScore = Math.max(0, Math.min(100, Number(r.decision_points)));
     const missionBonus = r.mission_completed ? Number(r.bonus_points || 0) : 0;
-    const total = 0.3 * resourceScore + 0.7 * decisionScore + missionBonus;
+    const total = resourceScore + missionBonus;
     return {
       teamId: r.team_id,
       teamCode: r.team_code,
-      decisionPoints: r.decision_points,
       missionTitle: r.mission_title,
       missionCompleted: r.mission_completed,
       bonusPoints: Number(r.bonus_points || 0),
       resourceScore: Math.round(resourceScore * 10) / 10,
-      decisionScore: Math.round(decisionScore * 10) / 10,
       missionBonus,
       totalScore: Math.round(total * 10) / 10,
     };
@@ -70,13 +69,12 @@ export default function LeaderboardTab() {
       <div className="table-scroll">
         <table className="data-table">
           <thead>
-            <tr><th>#</th><th>Team</th><th>Resource</th><th>Raw Points</th><th>Decision</th><th>Secret Mission</th><th>Total</th></tr>
+            <tr><th>#</th><th>Team</th><th>Resource</th><th>Secret Mission</th><th>Total</th></tr>
           </thead>
           <tbody>
             {leaderboard.map((r, i) => (
               <tr key={r.teamId}>
                 <td>{i + 1}</td><td><b>{r.teamCode}</b></td><td>{r.resourceScore}</td>
-                <td>{r.decisionPoints}</td><td>{r.decisionScore}</td>
                 <td>
                   <div>{r.missionTitle} (+{r.bonusPoints})</div>
                   <button
@@ -92,7 +90,7 @@ export default function LeaderboardTab() {
               </tr>
             ))}
             {leaderboard.length === 0 && (
-              <tr><td colSpan={7}>No teams yet.</td></tr>
+              <tr><td colSpan={5}>No teams yet.</td></tr>
             )}
           </tbody>
         </table>

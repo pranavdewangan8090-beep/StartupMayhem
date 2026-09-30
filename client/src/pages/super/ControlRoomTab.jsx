@@ -18,7 +18,6 @@ function formatDelta(applied) {
   if (applied.customers) parts.push(`${applied.customers > 0 ? '+' : ''}${applied.customers / 1000}k Customers`);
   if (applied.reputation) parts.push(`${applied.reputation > 0 ? '+' : ''}${applied.reputation} Reputation`);
   if (applied.innovation) parts.push(`${applied.innovation > 0 ? '+' : ''}${applied.innovation} Innovation`);
-  if (applied.decision_points) parts.push(`${applied.decision_points > 0 ? '+' : ''}${applied.decision_points} pts`);
   return parts.length ? parts.join(' · ') : 'No change';
 }
 

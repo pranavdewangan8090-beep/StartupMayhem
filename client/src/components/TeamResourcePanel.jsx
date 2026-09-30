@@ -19,10 +19,6 @@ export default function TeamResourcePanel() {
     setForm({ dCashL: 0, dCustomers: 0, dReputation: 0, dInnovation: 0 });
     setModal({ team, mode: 'resources' });
   }
-  function openPointsModal(team) {
-    setForm({ delta: 0 });
-    setModal({ team, mode: 'points' });
-  }
 
   async function submitResources() {
     setBusy(true);
@@ -44,19 +40,6 @@ export default function TeamResourcePanel() {
     } finally { setBusy(false); }
   }
 
-  async function submitPoints() {
-    const delta = Number(form.delta);
-    if (!delta) { toast('Delta cannot be zero.', 'error'); return; }
-    setBusy(true);
-    try {
-      await call(supabase.rpc('fn_admin_adjust_decision_points', { p_team_id: modal.team.id, p_payload: { delta } }));
-      toast('Decision points recorded.', 'success');
-      setModal(null);
-    } catch (err) {
-      toast(err instanceof ApiError ? err.message : 'Could not record points.', 'error');
-    } finally { setBusy(false); }
-  }
-
   return (
     <div>
       <div className="teams-grid">
@@ -72,7 +55,6 @@ export default function TeamResourcePanel() {
             </div>
             <div className="row" style={{ display: 'flex', gap: 8 }}>
               <button className="btn btn-primary btn-sm" onClick={() => openResourceModal(t)}>Adjust Resources</button>
-              <button className="btn btn-ghost btn-sm" onClick={() => openPointsModal(t)}>Decision Points</button>
             </div>
           </div>
         ))}
@@ -94,18 +76,6 @@ export default function TeamResourcePanel() {
             </div>
           ))}
           <button className="btn btn-primary btn-block" disabled={busy} onClick={submitResources}>Apply</button>
-        </Modal>
-      )}
-
-      {modal?.mode === 'points' && (
-        <Modal onClose={() => setModal(null)}>
-          <h2>Decision Points — {modal.team.team_code}</h2>
-          <p>Players never see this. Only the Super Admin can view every team's points.</p>
-          <div className="field">
-            <label>Δ Points</label>
-            <input type="number" value={form.delta} onChange={(e) => setForm({ ...form, delta: e.target.value })} />
-          </div>
-          <button className="btn btn-primary btn-block" disabled={busy} onClick={submitPoints}>Save</button>
         </Modal>
       )}
     </div>
