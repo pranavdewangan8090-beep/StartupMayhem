@@ -688,6 +688,20 @@ table.data-table th { color: var(--text-dim); font-weight: 600; font-size: 0.72r
 }
 .desktop-grid > .card-surface { display: flex; flex-direction: column; }
 
+/* Control Room's top row: Game Toggles + Card Trading split the width
+   exactly evenly (unlike .desktop-grid's auto-fit, which would give them
+   whatever they happen to fit). Same 860px collapse point as the sidebar,
+   so it stacks to one column at the same width everything else does. */
+.control-room-top-row {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+@media (max-width: 860px) {
+  .control-room-top-row { grid-template-columns: 1fr; }
+}
+
 .teams-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));

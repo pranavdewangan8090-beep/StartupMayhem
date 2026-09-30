@@ -118,7 +118,7 @@ export default function ControlRoomTab() {
 
   return (
     <div>
-      <div className="desktop-grid">
+      <div className="control-room-top-row">
         <div className="card-surface section">
           <div className="admin-card-head"><h2>Game Toggles</h2></div>
           {TOGGLES.map((t) => (
@@ -155,26 +155,26 @@ export default function ControlRoomTab() {
             </table>
           </div>
         </div>
+      </div>
 
-        <div className="card-surface section">
-          <div className="admin-card-head">
-            <h2>Round 3: Crises</h2>
-            <span className="admin-card-hint">{triggeredCount}/{crises.length} triggered</span>
-          </div>
-          <button className="btn btn-danger btn-sm" disabled={busy || allTriggered || !nextCrisis} onClick={() => setConfirmCrisis(nextCrisis)}>
-            {allTriggered ? 'All Crises Triggered' : `Trigger Crisis ${nextCrisis?.number ?? ''}`}
-          </button>
-          <div className="row" style={{ gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
-            {crises.filter((c) => c.is_triggered).map((c) => (
-              <button
-                key={c.id}
-                className={`btn btn-sm ${selectedCrisisId === c.id ? 'btn-primary' : 'btn-ghost'}`}
-                onClick={() => selectCrisis(c.id)}
-              >
-                {c.title}
-              </button>
-            ))}
-          </div>
+      <div className="card-surface section" style={{ marginTop: 16 }}>
+        <div className="admin-card-head">
+          <h2>Round 3: Crises</h2>
+          <span className="admin-card-hint">{triggeredCount}/{crises.length} triggered</span>
+        </div>
+        <button className="btn btn-danger btn-sm" disabled={busy || allTriggered || !nextCrisis} onClick={() => setConfirmCrisis(nextCrisis)}>
+          {allTriggered ? 'All Crises Triggered' : `Trigger Crisis ${nextCrisis?.number ?? ''}`}
+        </button>
+        <div className="row" style={{ gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+          {crises.filter((c) => c.is_triggered).map((c) => (
+            <button
+              key={c.id}
+              className={`btn btn-sm ${selectedCrisisId === c.id ? 'btn-primary' : 'btn-ghost'}`}
+              onClick={() => selectCrisis(c.id)}
+            >
+              {c.title}
+            </button>
+          ))}
         </div>
       </div>
 
