@@ -17,7 +17,7 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const { login } = useAuth();
+  const { login, notice } = useAuth();
   const navigate = useNavigate();
 
   async function onSubmit(e) {
@@ -44,6 +44,7 @@ export default function Login() {
         <p className="login-sub">Log in to your team, admin or super admin account.</p>
 
         <div className="card-surface">
+          {notice && <p className="warning-text" role="status">{notice}</p>}
           <div className="role-switch">
             {ROLES.map((r) => (
               <button

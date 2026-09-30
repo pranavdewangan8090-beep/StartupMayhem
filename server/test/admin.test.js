@@ -57,11 +57,21 @@ describe('admin (fn_admin_*): read paths are shared, resource/points writes are 
     );
   });
 
+  // Since 025, anon has no EXECUTE grant on anything but fn_login, so this is
+  // refused by Postgres itself (permission denied) before the function runs.
   test('an unauthenticated caller cannot call any admin function', async () => {
     const anon = new Session();
     await assert.rejects(
       () => anon.rpc('fn_admin_teams'),
-      (err) => err.message === 'NOT_AUTHENTICATED'
+      (err) => err.message === 'NOT_AUTHENTICATED' || /permission denied/i.test(err.message)
     );
+  });
+
+  // Regression for the JWT-secret leak: fn_current_jwt_secret() is SECURITY
+  // DEFINER and was executable by anyone holding the public anon key.
+  test('nobody can call fn_current_jwt_secret through the API', async () => {
+    const anon = new Session();
+    await assert.rejects(() => anon.rpc('fn_current_jwt_secret'), (err) => err.status === 401 || err.status === 403 || err.status === 404);
+    await assert.rejects(() => admin.rpc('fn_current_jwt_secret'), (err) => err.status === 401 || err.status === 403 || err.status === 404);
   });
 });

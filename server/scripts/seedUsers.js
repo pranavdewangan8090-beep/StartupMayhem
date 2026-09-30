@@ -1,6 +1,6 @@
 // Resets and re-creates the real accounts for the event: wipes every team,
 // user, and any game data hanging off a team (action cards, trades, crisis
-// effects), then creates 30 teams (with a random deal of the 5 identity
+// effects), resets the crisis sequence and game toggles, then creates 30 teams (with a random deal of the 5 identity
 // cards each), 20 admins, 10 super admins. Passwords and login IDs are
 // randomly generated and written to a local CSV — this file is NEVER
 // committed (it's covered by .gitignore) and should be deleted/moved
@@ -79,6 +79,13 @@ async function main() {
     await client.query('delete from users');
     await client.query('delete from login_attempts');
 
+    // Reset shared game state too — otherwise a crisis triggered during a
+    // rehearsal stays triggered and the real event starts at crisis 2 (or
+    // "no more crises"). Card play starts CLOSED so nobody plays a card
+    // before the GMs open that round; R1 replacements start open.
+    await client.query('update crises set is_triggered = false, triggered_at = null, triggered_by = null');
+    await client.query('update game_state set r1_replace_open = true, card_play_open = false, updated_at = now() where id = 1');
+
     for (let i = 1; i <= TEAM_COUNT; i++) {
       const teamCode = `T${String(i).padStart(2, '0')}`;
       const loginId = uniqueLoginId(`${teamCode}-`, usedLoginIds);
@@ -140,6 +147,7 @@ async function main() {
   const outPath = new URL('./credentials.local.csv', import.meta.url);
   fs.writeFileSync(outPath, csvRows.join('\n') + '\n');
   console.log(`Reset complete: ${TEAM_COUNT} teams, ${ADMIN_COUNT} admins, ${SUPER_ADMIN_COUNT} super admins.`);
+  console.log('Game state reset: all crises untriggered, R1 replacements OPEN, card play CLOSED, trading OFF.');
   console.log(`Credentials written to ${outPath.pathname} — keep this file safe and do not commit it.`);
 }
 

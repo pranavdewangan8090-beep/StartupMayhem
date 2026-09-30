@@ -8,9 +8,11 @@ Supabase directly, and every game rule runs as a Postgres function.
 
 ```
 server/   Not a deployed server — just SQL + one-off scripts run against Supabase
-  sql/    001 schema, 002-004 seed data, 005 game-logic functions,
-          010-014 the Supabase-direct auth + RPC layer — run in order
-  scripts/seedUsers.js   creates the real 30 teams / 30 admins / 5 super admins
+  sql/    001 schema, 002-003 seed data, 005 game-logic functions,
+          010-026 the Supabase-direct auth + RPC layer, crises, and fixes —
+          run in numeric order
+  scripts/seedUsers.js   resets the game and creates 30 teams / 20 admins / 10 super admins
+  scripts/applySql.js    applies SQL files in one transaction (dry run unless --commit)
 client/   React (Vite) mobile-first UI — talks to Supabase via lib/supabase.js
 ```
 
@@ -18,19 +20,18 @@ client/   React (Vite) mobile-first UI — talks to Supabase via lib/supabase.js
 
 ### 1. Database (Supabase)
 
-In the Supabase SQL editor, or via `psql "$DATABASE_URL"`, run every file in
-`server/sql/` **in order**: `001` → `002` → `003` → `004` → `005` → `010` →
-`011` → `012` → `013` → `014` (or just `cd server && npm run seed:cards`,
-which runs all of them). `004_seed_mayhems.sql` currently has **4 placeholder
-mayhems** — replace this file with your real mayhem list before the event
-(tags must be one or more of `finance`, `social`, `urban`, `logistics`).
+On a fresh project, run every file in `server/sql/` **in numeric order**
+(`001` → `026`, skipping the numbers that don't exist) — `cd server && npm
+run seed:cards` does exactly that with psql. The real Round 3 crises and
+their per-Market-card tiers are in `021_seed_real_crises.sql`.
 
 You'll also need to create `_app_secrets` yourself (it's deliberately not in
 any SQL file, so the real JWT secret never touches source control) — see the
 comment at the top of `server/sql/010_supabase_auth.sql`.
 
-Then create the real accounts (30 teams with a random deal of cards, 30
-admins, 5 super admins):
+Then create the real accounts (30 teams with a random deal of cards, 20
+admins, 10 super admins). This also **resets the game**: all crises go back to
+untriggered, R1 replacements open, card play closed, trading off:
 
 ```
 cd server
@@ -81,6 +82,14 @@ Realtime would add on venue WiFi.
 - All passwords are bcrypt-hashed (via pgcrypto's `crypt()`/`gen_salt('bf')`,
   compatible with the same hash format `bcryptjs` used previously); no
   plaintext password is stored anywhere.
+- **Only `fn_login` is callable without logging in.** Postgres grants
+  EXECUTE on new functions to `PUBLIC` by default (and `anon` inherits it), so
+  `revoke ... from anon` alone does nothing — `025_security_lockdown.sql`
+  revokes from `PUBLIC` and `anon` across the schema. Any new function must
+  be granted to `authenticated` explicitly, and internal helpers (anything
+  not called by the client) must not be granted at all. After adding
+  functions, `node scripts/applySql.js <file>` prints which ones `anon` can
+  call — it should only ever be `fn_login`.
 - **No table is ever exposed to PostgREST via RLS policy + grant.** Every
   table a client can reach data from (`teams`, `users`, `_app_secrets`, etc.)
   has RLS enabled with zero policies and no grants to `anon`/`authenticated`
@@ -101,7 +110,22 @@ Realtime would add on venue WiFi.
   (double-tap, retry) is rejected as a duplicate rather than applied twice.
 - Decision points are never returned by any player-facing function.
 
-## Placeholder data
+## Changing the live database
 
-`server/sql/004_seed_mayhems.sql` is placeholder — swap in your real mayhem
-list before the event and re-run just that file (`\i 004_seed_mayhems.sql`).
+Put the change in a new numbered file in `server/sql/`, then:
+
+```
+cd server
+node scripts/applySql.js sql/0NN_whatever.sql            # dry run — rolled back
+node scripts/applySql.js --commit sql/0NN_whatever.sql   # apply
+```
+
+Apply database changes **before** deploying a client build that depends on
+them.
+
+## Tests
+
+`server/test/` runs against the **live** Supabase project and logs in as real
+seeded accounts (which logs that team's phone out), so it refuses to run
+unless `SM_ALLOW_LIVE_TESTS=1` is set. Never run it during the event. See
+`server/test/README.md`.

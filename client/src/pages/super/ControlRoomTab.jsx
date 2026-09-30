@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase, call, ApiError } from '../../lib/supabase.js';
 import { useToast } from '../../lib/ToastContext.jsx';
 import Switch from '../../components/Switch.jsx';
+import ConfirmModal from '../../components/ConfirmModal.jsx';
 
 const TOGGLES = [
   { key: 'r1_replace_open', label: 'R1: Card Replacements' },
@@ -29,6 +30,7 @@ export default function ControlRoomTab() {
   const [tradeToggles, setTradeToggles] = useState(null);
   const [tradeStatus, setTradeStatus] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [confirmCrisis, setConfirmCrisis] = useState(null); // the crisis row about to be triggered
   const toast = useToast();
 
   async function load() {
@@ -76,16 +78,23 @@ export default function ControlRoomTab() {
     } finally { setBusy(false); }
   }
 
+  // The exact crisis the Super Admin confirmed is sent along; if another
+  // Super Admin triggered it in the meantime the server refuses
+  // (CRISIS_OUT_OF_ORDER) instead of firing the NEXT one by accident.
   async function triggerCrisis() {
+    const crisis = confirmCrisis;
     setBusy(true);
     try {
-      const triggered = await call(supabase.rpc('fn_super_trigger_crisis'));
+      const triggered = await call(supabase.rpc('fn_super_trigger_crisis', { p_crisis_id: crisis.id }));
+      setConfirmCrisis(null);
       toast(`Crisis triggered: ${triggered.title} — effects applied to every team.`, 'success');
       await load();
       setSelectedCrisisId(triggered.id);
       await loadCrisisDetail(triggered.id);
     } catch (err) {
+      setConfirmCrisis(null);
       toast(err instanceof ApiError ? err.message : 'Could not trigger the next crisis.', 'error');
+      await load();
     } finally { setBusy(false); }
   }
 
@@ -105,6 +114,7 @@ export default function ControlRoomTab() {
   const triggeredCount = crises.filter((c) => c.is_triggered).length;
   const allTriggered = crises.length > 0 && triggeredCount === crises.length;
   const selectedCrisis = crises.find((c) => c.id === selectedCrisisId);
+  const nextCrisis = crises.find((c) => !c.is_triggered);
   const effectiveTradingOn = tradeToggles?.some((t) => t.enabled) ?? false;
 
   return (
@@ -152,8 +162,8 @@ export default function ControlRoomTab() {
             <h2>Round 3: Crises</h2>
             <span className="admin-card-hint">{triggeredCount}/{crises.length} triggered</span>
           </div>
-          <button className="btn btn-danger btn-sm" disabled={busy || allTriggered} onClick={triggerCrisis}>
-            {allTriggered ? 'All Crises Triggered' : 'Trigger Next Crisis'}
+          <button className="btn btn-danger btn-sm" disabled={busy || allTriggered || !nextCrisis} onClick={() => setConfirmCrisis(nextCrisis)}>
+            {allTriggered ? 'All Crises Triggered' : `Trigger Crisis ${nextCrisis?.number ?? ''}`}
           </button>
           <div className="row" style={{ gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
             {crises.filter((c) => c.is_triggered).map((c) => (
@@ -193,6 +203,20 @@ export default function ControlRoomTab() {
             </table>
           </div>
         </div>
+      )}
+
+      {confirmCrisis && (
+        <ConfirmModal
+          title={`Trigger Crisis ${confirmCrisis.number}: ${confirmCrisis.title}?`}
+          confirmLabel="Trigger crisis"
+          danger
+          busy={busy}
+          onConfirm={triggerCrisis}
+          onCancel={() => setConfirmCrisis(null)}
+        >
+          <p>This immediately applies the crisis to <b>every active team's</b> resources and decision points, shows it on every player's phone, and closes R1 replacements.</p>
+          <p className="warning-text">It cannot be undone from the app.</p>
+        </ConfirmModal>
       )}
     </div>
   );

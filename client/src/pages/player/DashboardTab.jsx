@@ -19,13 +19,28 @@ function formatDelta(applied) {
   return parts.length ? parts.join(' · ') : 'No change';
 }
 
-export default function DashboardTab() {
+// Crises come from PlayerApp's useCrisisFeed (already polled); resources are
+// polled here on the same cadence, so a crisis hit, an accepted deal or a
+// Super Admin adjustment shows up without the player switching tabs.
+export default function DashboardTab({ crises = [] }) {
   const [status, setStatus] = useState(null);
-  const [crises, setCrises] = useState([]);
 
   useEffect(() => {
-    call(supabase.rpc('fn_player_status')).then((rows) => setStatus(rows?.[0]));
-    call(supabase.rpc('fn_crisis_public')).then(setCrises);
+    let cancelled = false;
+    async function tick() {
+      try {
+        const rows = await call(supabase.rpc('fn_player_status'));
+        if (!cancelled && rows?.[0]) setStatus(rows[0]);
+      } catch {
+        // transient network hiccup — next tick retries
+      }
+    }
+    tick();
+    const id = setInterval(tick, 4000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
   }, []);
 
   if (!status) return <div className="empty-state">Loading company status…</div>;

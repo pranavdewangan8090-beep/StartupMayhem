@@ -54,7 +54,7 @@ describe('crisis read paths', () => {
 
   test('only super_admin can trigger the next crisis (role check runs before anything else, so this never actually triggers one)', async () => {
     await assert.rejects(
-      () => admin.rpc('fn_super_trigger_crisis'),
+      () => admin.rpc('fn_super_trigger_crisis', { p_crisis_id: 1 }),
       (err) => err.message === 'NOT_AUTHENTICATED'
     );
   });

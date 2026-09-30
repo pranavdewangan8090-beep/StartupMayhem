@@ -69,6 +69,18 @@ describe('super admin only', () => {
     const teamsAfterDeactivate = await superAdmin.rpc('fn_admin_teams');
     assert.ok(!teamsAfterDeactivate.some((t) => t.id === created.teamId), 'deactivated team should drop out of the active list');
 
+    const accounts = await superAdmin.rpc('fn_super_accounts');
+    const account = accounts.find((a) => a.team_id === created.teamId);
+    assert.equal(account.team_active, false, 'fn_super_accounts still lists inactive teams');
+    assert.equal(account.login_id, created.loginId);
+
+    await superAdmin.rpc('fn_super_reactivate_team', { p_team_id: created.teamId });
+    const teamsAfterReactivate = await superAdmin.rpc('fn_admin_teams');
+    assert.ok(teamsAfterReactivate.some((t) => t.id === created.teamId), 'reactivated team should be back in the active list');
+    const player = new Session();
+    await player.login('player', created.loginId, created.password);
+    assert.ok(player.token, 'reactivated team can log in again');
+
     // fn_super_deactivate_team only flips is_active — actually remove the row
     await deleteTestTeam(created.teamId);
   });

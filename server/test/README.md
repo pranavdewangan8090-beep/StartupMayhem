@@ -9,8 +9,11 @@ way the browser does (`helpers.js`'s `Session.rpc()` mirrors
 ```
 cd server
 npm install
-npm test
+SM_ALLOW_LIVE_TESTS=1 npm test
 ```
+
+The `SM_ALLOW_LIVE_TESTS=1` guard exists because logging in as a real seeded
+account logs that account's phone out — **never run this during the event.**
 
 Requires `server/scripts/credentials.local.csv` to exist (run
 `node scripts/seedUsers.js` first) — the suite logs in as real seeded

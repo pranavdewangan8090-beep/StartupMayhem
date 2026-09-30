@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase, call, newRequestId, ApiError } from '../../lib/supabase.js';
 import { useToast } from '../../lib/ToastContext.jsx';
+import ConfirmModal from '../../components/ConfirmModal.jsx';
 
 // Matches ActionCardsTab.jsx's CAT_LABEL — the 'action' DB category displays
 // as "Special Card" and 'special' as "Action Card", so this dropdown needs
@@ -23,6 +24,7 @@ export default function TradePanel() {
   const [teamBCards, setTeamBCards] = useState([]);
   const [form, setForm] = useState(emptyForm);
   const [busy, setBusy] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const toast = useToast();
 
   async function load() {
@@ -60,6 +62,10 @@ export default function TradePanel() {
     && form.teamAId !== form.teamBId
     && (!Number(form.moneyAmount) || form.moneyTeamId);
 
+  const teamCode = (id) => teams.find((t) => String(t.id) === String(id))?.team_code || '?';
+  const cardName = (cards, id) => cards.find((c) => c.id === id)?.name || '?';
+  const money = Number(form.moneyAmount) || 0;
+
   async function submitTrade() {
     setBusy(true);
     try {
@@ -74,10 +80,12 @@ export default function TradePanel() {
         p_request_id: newRequestId(),
       }));
       toast('Trade processed.', 'success');
+      setConfirming(false);
       setForm(emptyForm);
       setTeamACards([]);
       setTeamBCards([]);
     } catch (err) {
+      setConfirming(false);
       toast(err instanceof ApiError ? err.message : 'Could not process the trade.', 'error');
     } finally { setBusy(false); }
   }
@@ -146,10 +154,21 @@ export default function TradePanel() {
           </div>
         </div>
 
-        <button className="btn btn-primary btn-block" disabled={busy || !canSubmit} onClick={submitTrade} style={{ marginTop: 16 }}>
+        <button className="btn btn-primary btn-block" disabled={busy || !canSubmit} onClick={() => setConfirming(true)} style={{ marginTop: 16 }}>
           Trade
         </button>
       </div>
+
+      {confirming && (
+        <ConfirmModal title="Process this trade?" confirmLabel="Process trade" busy={busy} onConfirm={submitTrade} onCancel={() => setConfirming(false)}>
+          <p><b>{teamCode(form.teamAId)}</b> gives <b>{cardName(teamACards, form.teamACardId)}</b> to {teamCode(form.teamBId)}.</p>
+          <p><b>{teamCode(form.teamBId)}</b> gives <b>{cardName(teamBCards, form.teamBCardId)}</b> to {teamCode(form.teamAId)}.</p>
+          {money > 0 && (
+            <p><b>{teamCode(form.moneyTeamId)}</b> pays ₹{money / 10}M ({money} lakhs) to the other team.</p>
+          )}
+          <p className="warning-text">Check both teams agree — trades cannot be undone from the app.</p>
+        </ConfirmModal>
+      )}
     </div>
   );
 }

@@ -21,7 +21,7 @@ export default function PlayerApp() {
   const allRevealed = areAllCardsRevealed(revealed);
   const [tab, setTab] = useState(allRevealed ? 'dashboard' : 'cards');
   const { state, refreshNow } = useGameState(4000);
-  const { pendingReveal, dismiss } = useCrisisFeed(user?.teamId, 4000);
+  const { crises, pendingReveal, dismiss } = useCrisisFeed(user?.teamId, 4000);
 
   // if cards aren't all revealed yet (or a stale tab choice becomes locked),
   // always land the player back on My Cards
@@ -55,7 +55,7 @@ export default function PlayerApp() {
         })}
       </div>
       <div className="page">
-        {tab === 'dashboard' && allRevealed && <DashboardTab gameState={state} />}
+        {tab === 'dashboard' && allRevealed && <DashboardTab crises={crises} />}
         {tab === 'cards' && <CardsTab gameState={state} revealed={revealed} onReveal={reveal} />}
         {tab === 'action' && <ActionCardsTab gameState={state} onChanged={refreshNow} />}
       </div>

@@ -47,10 +47,19 @@ describe('auth (fn_login / fn_auth_user)', () => {
     );
   });
 
-  test('fn_auth_user returns nothing for an unauthenticated caller (anon key only)', async () => {
+  // Before 025_security_lockdown.sql, `revoke execute ... from anon` was a
+  // no-op (Postgres grants new functions to PUBLIC by default, which anon
+  // inherits), so anon could enter fn_auth_user()'s body and get an empty
+  // result back. Now Postgres refuses the call before the function runs —
+  // the stricter behavior the original grant always intended. The real
+  // client never calls fn_auth_user() without a stored token (see
+  // AuthContext.refresh()), so this doesn't change app behavior.
+  test('fn_auth_user is not callable by an unauthenticated caller (anon key only)', async () => {
     const s = new Session(); // never logged in — rpc() falls back to the anon key
-    const rows = await s.rpc('fn_auth_user');
-    assert.deepEqual(rows, []);
+    await assert.rejects(
+      () => s.rpc('fn_auth_user'),
+      (err) => err.status === 401 && /permission denied/i.test(err.message)
+    );
   });
 
   test('re-login bumps session_version and invalidates the old token', async () => {

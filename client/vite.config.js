@@ -5,14 +5,6 @@ export default defineConfig({
   plugins: [react()],
   server: {
     host: true, // so it's reachable on the venue WiFi from phones during dev, not just localhost
-    port: 5173,
-    proxy: {
-      // during local dev, forward API calls to the Express server so cookies
-      // stay same-site (no CORS headaches while iterating)
-      '/api': {
-        target: 'http://localhost:4000',
-        changeOrigin: true,
-      },
-    },
+    port: Number(process.env.PORT) || 5173,
   },
 });

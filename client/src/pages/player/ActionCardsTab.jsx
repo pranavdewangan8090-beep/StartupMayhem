@@ -9,22 +9,30 @@ export default function ActionCardsTab({ gameState, onChanged }) {
   const [hand, setHand] = useState([]);
   const [teams, setTeams] = useState([]);
   const [incomingDeals, setIncomingDeals] = useState([]);
+  const [outgoingDeals, setOutgoingDeals] = useState([]);
   const [playTarget, setPlayTarget] = useState(null); // { card }
   const [selectedTeamId, setSelectedTeamId] = useState('');
   const [busy, setBusy] = useState(false);
   const toast = useToast();
 
   async function loadAll() {
-    const [h, t, d] = await Promise.all([
+    const [h, t, d, o] = await Promise.all([
       call(supabase.rpc('fn_player_hand')),
       call(supabase.rpc('fn_other_teams')),
       call(supabase.rpc('fn_deals_incoming')),
+      call(supabase.rpc('fn_deals_outgoing')),
     ]);
     setHand(h);
     setTeams(t);
     setIncomingDeals(d);
+    setOutgoingDeals(o);
   }
-  useEffect(() => { loadAll(); }, [gameState?.action_card_count, gameState?.pending_deal_offers_in]);
+  // pending_deal_offers_out / used_card_count change when a partner answers
+  // one of OUR offers — without them the proposer never saw the result
+  useEffect(() => { loadAll(); }, [
+    gameState?.action_card_count, gameState?.pending_deal_offers_in,
+    gameState?.pending_deal_offers_out, gameState?.used_card_count,
+  ]);
 
   async function playSelf(teamActionCardId) {
     setBusy(true);
@@ -75,6 +83,22 @@ export default function ActionCardsTab({ gameState, onChanged }) {
     }
   }
 
+  async function cancelDeal(cardPlayId) {
+    setBusy(true);
+    try {
+      await call(supabase.rpc('fn_cancel_deal_card', { p_card_play_id: cardPlayId }));
+      toast('Deal offer withdrawn — the card is back in your hand.', 'info');
+      await loadAll();
+      onChanged?.();
+    } catch (err) {
+      toast(err instanceof ApiError ? err.message : 'Could not withdraw the offer.', 'error');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const outgoingByCard = Object.fromEntries(outgoingDeals.map((d) => [d.team_action_card_id, d]));
+
   return (
     <div>
       {incomingDeals.length > 0 && (
@@ -105,7 +129,18 @@ export default function ActionCardsTab({ gameState, onChanged }) {
               <span className={`pill cat-${c.category}`}>{CAT_LABEL[c.category]}</span>
               <div className="name">{c.name}</div>
               <div className="effect">{c.effect_text}</div>
-              {c.status === 'pending' && <p className="status-text">Awaiting response</p>}
+              {c.status === 'pending' && (
+                <div>
+                  <p className="status-text">
+                    Awaiting response{outgoingByCard[c.id] ? ` from ${outgoingByCard[c.id].to_team_code}` : ''}
+                  </p>
+                  {outgoingByCard[c.id] && (
+                    <button className="btn btn-ghost btn-sm" disabled={busy} onClick={() => cancelDeal(outgoingByCard[c.id].id)}>
+                      Withdraw offer
+                    </button>
+                  )}
+                </div>
+              )}
               {c.status === 'used' && <p className="status-text">Already used</p>}
               {c.status === 'held' && gameState?.card_play_open && (
                 <div className="row">

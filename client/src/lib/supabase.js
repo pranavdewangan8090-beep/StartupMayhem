@@ -60,7 +60,25 @@ const CODE_MAP = {
   DEAL_TRADES_ONLY_WITH_DEAL: 'A Deal card can only be traded for another Deal card.',
   BAD_MONEY_AMOUNT: 'The money amount cannot be negative.',
   MONEY_TEAM_INVALID: 'The paying team must be one of the two teams in the trade.',
+  NOT_AUTHENTICATED: 'Your session has ended — please log in again.',
+  INITIATOR_INSUFFICIENT_CASH: 'The team that proposed this deal no longer has enough Cash for it.',
+  CRISIS_OUT_OF_ORDER: 'Another Super Admin already triggered that crisis. The list has been refreshed — check it before triggering again.',
+  USER_NOT_FOUND: 'Account not found.',
 };
+
+// Fired whenever a call proves the stored token no longer identifies anyone
+// (this team logged in on another phone, the account was deactivated, or the
+// JWT expired). AuthContext listens and sends the user back to the login
+// screen with an explanation, instead of leaving a silently frozen UI.
+export const SESSION_INVALID_EVENT = 'sm:session-invalid';
+
+export function reportSessionInvalid() {
+  window.dispatchEvent(new Event(SESSION_INVALID_EVENT));
+}
+
+function isSessionError(error, code) {
+  return code === 'NOT_AUTHENTICATED' || error.code === 'PGRST301' || /jwt expired/i.test(error.message || '');
+}
 
 export class ApiError extends Error {
   constructor(message, code) {
@@ -75,6 +93,7 @@ export async function call(promise) {
   const { data, error } = await promise;
   if (error) {
     const code = (error.message || '').trim();
+    if (getToken() && isSessionError(error, code)) reportSessionInvalid();
     throw new ApiError(CODE_MAP[code] || error.message, code);
   }
   return data;

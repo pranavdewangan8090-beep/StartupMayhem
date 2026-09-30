@@ -91,4 +91,47 @@ describe('playing action cards', () => {
       (err) => err.message === 'CANNOT_TARGET_SELF'
     );
   });
+
+  // Regression: card_plays used to have UNIQUE(team_action_card_id), so a
+  // rejected deal card went back to 'held' but could never be proposed again.
+  test('a rejected deal card can be proposed again, and the proposer can withdraw an offer', async () => {
+    const hand = await playerB.rpc('fn_player_hand');
+    const dealCard = hand.find((c) => c.category === 'deal' && c.status === 'held');
+
+    const first = await playerB.rpc('fn_play_deal_card', {
+      p_team_action_card_id: dealCard.id, p_partner_team_id: teamA.teamId, p_request_id: randomId(),
+    });
+    const rejected = await playerA.rpc('fn_respond_deal_card', { p_card_play_id: first.id, p_accept: false, p_request_id: randomId() });
+    assert.equal(rejected.accepted, false);
+
+    const second = await playerB.rpc('fn_play_deal_card', {
+      p_team_action_card_id: dealCard.id, p_partner_team_id: teamA.teamId, p_request_id: randomId(),
+    });
+    assert.equal(second.status, 'pending');
+
+    const outgoing = await playerB.rpc('fn_deals_outgoing');
+    assert.ok(outgoing.some((d) => String(d.id) === String(second.id)), 'proposer should see its own pending offer');
+
+    await playerB.rpc('fn_cancel_deal_card', { p_card_play_id: second.id });
+    const handAfter = await playerB.rpc('fn_player_hand');
+    assert.equal(handAfter.find((c) => c.id === dealCard.id).status, 'held');
+
+    await assert.rejects(
+      () => playerA.rpc('fn_respond_deal_card', { p_card_play_id: second.id, p_accept: true, p_request_id: randomId() }),
+      (err) => err.message === 'DEAL_ALREADY_RESOLVED'
+    );
+  });
+
+  test('only the proposer can withdraw an offer', async () => {
+    const hand = await playerB.rpc('fn_player_hand');
+    const dealCard = hand.find((c) => c.category === 'deal' && c.status === 'held');
+    const play = await playerB.rpc('fn_play_deal_card', {
+      p_team_action_card_id: dealCard.id, p_partner_team_id: teamA.teamId, p_request_id: randomId(),
+    });
+    await assert.rejects(
+      () => playerA.rpc('fn_cancel_deal_card', { p_card_play_id: play.id }),
+      (err) => err.message === 'DEAL_NOT_FOUND'
+    );
+    await playerB.rpc('fn_cancel_deal_card', { p_card_play_id: play.id });
+  });
 });

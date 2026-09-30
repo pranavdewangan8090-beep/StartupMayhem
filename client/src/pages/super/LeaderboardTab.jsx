@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { supabase, call } from '../../lib/supabase.js';
+import { supabase, call, ApiError } from '../../lib/supabase.js';
+import { useToast } from '../../lib/ToastContext.jsx';
 
 // Resource Score (30%) + Decision Score (70%) + Secret Mission bonus, per the
 // Point System doc — same formula the old Express /super-admin/leaderboard
@@ -21,6 +22,9 @@ function scoreLeaderboard(rows) {
       teamId: r.team_id,
       teamCode: r.team_code,
       decisionPoints: r.decision_points,
+      missionTitle: r.mission_title,
+      missionCompleted: r.mission_completed,
+      bonusPoints: Number(r.bonus_points || 0),
       resourceScore: Math.round(resourceScore * 10) / 10,
       decisionScore: Math.round(decisionScore * 10) / 10,
       missionBonus,
@@ -33,23 +37,58 @@ function scoreLeaderboard(rows) {
 
 export default function LeaderboardTab() {
   const [leaderboard, setLeaderboard] = useState([]);
+  const [busyTeamId, setBusyTeamId] = useState(null);
+  const toast = useToast();
 
-  useEffect(() => {
-    call(supabase.rpc('fn_super_leaderboard_raw')).then((rows) => setLeaderboard(scoreLeaderboard(rows)));
-  }, []);
+  async function load() {
+    try {
+      setLeaderboard(scoreLeaderboard(await call(supabase.rpc('fn_super_leaderboard_raw'))));
+    } catch (err) {
+      toast(err instanceof ApiError ? err.message : 'Could not load the leaderboard.', 'error');
+    }
+  }
+  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Secret Missions are judged by the GMs; this is where the verdict is
+  // recorded (fn_super_mark_mission previously had no UI at all).
+  async function setMission(row, completed) {
+    setBusyTeamId(row.teamId);
+    try {
+      await call(supabase.rpc('fn_super_mark_mission', { p_team_id: row.teamId, p_completed: completed }));
+      await load();
+    } catch (err) {
+      toast(err instanceof ApiError ? err.message : 'Could not update the mission.', 'error');
+    } finally { setBusyTeamId(null); }
+  }
 
   return (
     <div className="card-surface section">
+      <div className="admin-card-head">
+        <h2>Standings</h2>
+        <button className="btn btn-ghost btn-sm" onClick={load}>Refresh</button>
+      </div>
       <div className="table-scroll">
         <table className="data-table">
           <thead>
-            <tr><th>#</th><th>Team</th><th>Resource</th><th>Points</th><th>Decision</th><th>Mission</th><th>Total</th></tr>
+            <tr><th>#</th><th>Team</th><th>Resource</th><th>Points</th><th>Decision</th><th>Secret Mission</th><th>Total</th></tr>
           </thead>
           <tbody>
             {leaderboard.map((r, i) => (
               <tr key={r.teamId}>
                 <td>{i + 1}</td><td><b>{r.teamCode}</b></td><td>{r.resourceScore}</td>
-                <td>{r.decisionPoints}</td><td>{r.decisionScore}</td><td>+{r.missionBonus}</td><td><b>{r.totalScore}</b></td>
+                <td>{r.decisionPoints}</td><td>{r.decisionScore}</td>
+                <td>
+                  <div>{r.missionTitle} (+{r.bonusPoints})</div>
+                  <button
+                    className={`btn btn-sm ${r.missionCompleted ? 'btn-success' : 'btn-ghost'}`}
+                    disabled={busyTeamId === r.teamId}
+                    onClick={() => setMission(r, !r.missionCompleted)}
+                    title={r.missionCompleted ? 'Click to undo' : 'Mark this mission as completed'}
+                  >
+                    {r.missionCompleted ? 'Completed ✓' : 'Mark complete'}
+                  </button>
+                </td>
+                <td><b>{r.totalScore}</b></td>
               </tr>
             ))}
             {leaderboard.length === 0 && (

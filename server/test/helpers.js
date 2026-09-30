@@ -18,6 +18,16 @@ import { fileURLToPath } from 'node:url';
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const ANON_KEY = process.env.SUPABASE_ANON_KEY;
 
+// These tests log in as real seeded accounts (which logs the real phone out
+// of that account), create/delete teams and flip global toggles on the live
+// project. Never run them by accident during the event.
+if (process.env.SM_ALLOW_LIVE_TESTS !== '1') {
+  throw new Error(
+    'Refusing to run: this suite runs against the LIVE Supabase project and logs real accounts out. ' +
+    'Set SM_ALLOW_LIVE_TESTS=1 to run it (never during the event).'
+  );
+}
+
 if (!SUPABASE_URL || !ANON_KEY) {
   throw new Error('SUPABASE_URL and SUPABASE_ANON_KEY must be set in server/.env to run the test suite.');
 }

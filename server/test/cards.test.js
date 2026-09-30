@@ -77,11 +77,16 @@ describe('player identity cards (fn_player_cards / fn_replace_identity_card)', (
     await deleteTestTeam(team2.teamId);
   });
 
+  // Since 025_security_lockdown.sql, anon has no EXECUTE grant on this
+  // function at all, so Postgres refuses the call (permission denied)
+  // before the function's own NOT_AUTHENTICATED check ever runs — stricter
+  // than before, when the missing grant was a no-op. See auth.test.js's
+  // fn_auth_user test for the same story.
   test('a non-player (e.g. anon) cannot call fn_replace_identity_card', async () => {
     const anon = new Session();
     await assert.rejects(
       () => anon.rpc('fn_replace_identity_card', { p_category: 'market' }),
-      (err) => err.message === 'NOT_AUTHENTICATED'
+      (err) => err.status === 401 && /permission denied/i.test(err.message)
     );
   });
 });

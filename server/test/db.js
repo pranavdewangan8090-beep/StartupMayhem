@@ -6,7 +6,11 @@
 import 'dotenv/config';
 import pg from 'pg';
 
-const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL, max: 3 });
+// Short timeouts so a blocked network path (direct Postgres/5432 is often
+// firewalled off a given machine even when the Supabase REST API is fine)
+// fails a single query in a few seconds instead of hanging every test
+// file's teardown for a minute-plus.
+const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL, max: 3, connectionTimeoutMillis: 6000 });
 
 export async function query(sql, params) {
   return pool.query(sql, params);
