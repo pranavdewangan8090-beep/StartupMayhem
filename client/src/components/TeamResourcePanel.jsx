@@ -59,11 +59,6 @@ export default function TeamResourcePanel() {
 
   return (
     <div>
-      <div className="card-surface section">
-        <h1>Teams</h1>
-        <p>Adjust resources or decision points directly.</p>
-      </div>
-
       <div className="teams-grid">
         {teams.map((t) => (
           <div key={t.id} className="card-surface section team-card">

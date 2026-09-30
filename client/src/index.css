@@ -621,9 +621,9 @@ table.data-table th { color: var(--text-dim); font-weight: 600; font-size: 0.72r
 .super-logout { margin-top: 12px; width: 100%; }
 
 .super-main { flex: 1; min-width: 0; padding: 32px 40px 60px; }
-.super-main-header { margin-bottom: 20px; }
+.super-main-header { margin-bottom: 24px; }
 .super-main-header h1 { font-size: 1.6rem; }
-.super-main-body { max-width: 1180px; }
+.super-main-body { width: 100%; }
 
 /* Mobile/tablet: the fixed 240px sidebar squeezed the whole app sideways —
    collapse it into a sticky top bar with a horizontally scrolling nav
@@ -659,28 +659,89 @@ table.data-table th { color: var(--text-dim); font-weight: 600; font-size: 0.72r
   .super-main-header h1 { font-size: 1.3rem; }
 }
 
+/* Fluid card grids: fill the available width with as many columns as fit,
+   instead of a fixed column count that leaves the page looking empty on a
+   wide monitor or cramped on a narrow one. */
 .desktop-grid {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 16px;
+  align-items: start;
 }
-@media (min-width: 760px) {
-  .desktop-grid { grid-template-columns: 1fr 1fr; }
-  .desktop-grid > .card-surface { display: flex; flex-direction: column; }
-}
+.desktop-grid > .card-surface { display: flex; flex-direction: column; }
 
 .teams-grid {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 14px;
 }
-@media (min-width: 640px) {
-  .teams-grid { grid-template-columns: repeat(2, 1fr); }
-}
-@media (min-width: 1000px) {
-  .teams-grid { grid-template-columns: repeat(3, 1fr); }
-}
 .team-card { margin-bottom: 0; }
+
+/* Admin card: consistent header row (eyebrow label, optional right-aligned
+   action) instead of every panel inventing its own heading + filler
+   paragraph. */
+.admin-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.admin-card-head h2 { margin: 0; font-size: 0.95rem; }
+.admin-card-hint { color: var(--text-dim); font-size: 0.78rem; margin: 0; }
+
+/* Compact toggle switch — replaces a full ON/OFF button for binary game
+   switches. */
+.switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 42px;
+  height: 24px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.switch:disabled { opacity: 0.5; cursor: not-allowed; }
+.switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--text-dim);
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+.switch.on {
+  background: color-mix(in srgb, var(--success) 30%, transparent);
+  border-color: color-mix(in srgb, var(--success) 55%, transparent);
+}
+.switch.on::after { transform: translateX(18px); background: var(--success); }
+
+/* Compact icon-style button for a single row action (e.g. deactivate a
+   team) — an alternative to a full-width/heavy .btn on every row. */
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+.icon-btn:hover { border-color: var(--danger); color: var(--danger); background: rgba(239, 68, 68, 0.1); }
+.icon-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .toggle-row {
   display: flex;

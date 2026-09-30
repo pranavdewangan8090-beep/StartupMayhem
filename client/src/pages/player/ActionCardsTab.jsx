@@ -3,7 +3,7 @@ import { supabase, call, newRequestId, ApiError } from '../../lib/supabase.js';
 import { useToast } from '../../lib/ToastContext.jsx';
 import Modal from '../../components/Modal.jsx';
 
-const CAT_LABEL = { action: 'Action Card', deal: 'Deal', special: 'Special / AI' };
+const CAT_LABEL = { action: 'Special Card', deal: 'Deal', special: 'Action Card' };
 
 export default function ActionCardsTab({ gameState, onChanged }) {
   const [hand, setHand] = useState([]);
@@ -97,7 +97,7 @@ export default function ActionCardsTab({ gameState, onChanged }) {
 
       <div className="card-surface section">
         <h2>Your Action Cards ({hand.filter((c) => c.status !== 'used').length}/3)</h2>
-        <p>You were issued one Action, one Deal and one Special/AI card at the start of the game. You can only exchange one of these for a different card during Round 3, through an admin-processed trade.</p>
+        <p>You were issued one Special, one Deal and one Action card at the start of the game. You can exchange one of these for a different card during Round 3, through an admin-processed trade — a Deal card can only be traded for another Deal card.</p>
         {hand.length === 0 && <p>Loading your cards…</p>}
         <div className="action-grid">
           {hand.map((c) => (

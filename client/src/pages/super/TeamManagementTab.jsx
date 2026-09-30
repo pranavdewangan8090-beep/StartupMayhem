@@ -42,22 +42,41 @@ export default function TeamManagementTab() {
   return (
     <div>
       <div className="card-surface section">
-        <h2>Add a Team</h2>
-        <div className="field">
-          <label>Team Code</label>
-          <input value={newCode} onChange={(e) => setNewCode(e.target.value)} placeholder="T31" />
+        <div className="admin-card-head"><h2>Add a Team</h2></div>
+        <div className="row" style={{ gap: 8, alignItems: 'flex-end' }}>
+          <div className="field" style={{ flex: 1, marginBottom: 0 }}>
+            <label>Team Code</label>
+            <input value={newCode} onChange={(e) => setNewCode(e.target.value)} placeholder="T31" />
+          </div>
+          <button className="btn btn-primary" disabled={busy} onClick={addTeam}>Add</button>
         </div>
-        <button className="btn btn-primary btn-block" disabled={busy} onClick={addTeam}>Add Team</button>
       </div>
 
       <div className="card-surface section">
-        <h2>Teams</h2>
-        {teams.map((t) => (
-          <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
-            <span>{t.team_code}</span>
-            <button className="btn btn-ghost btn-sm" disabled={busy} onClick={() => deactivate(t.id)}>Deactivate</button>
-          </div>
-        ))}
+        <div className="admin-card-head">
+          <h2>Teams</h2>
+          <span className="admin-card-hint">{teams.length} active</span>
+        </div>
+        <div className="table-scroll">
+          <table className="data-table">
+            <thead><tr><th>Team</th><th>Market</th><th>Customer</th><th /></tr></thead>
+            <tbody>
+              {teams.map((t) => (
+                <tr key={t.id}>
+                  <td><b>{t.team_code}</b></td>
+                  <td>{t.market_title}</td>
+                  <td>{t.customer_title}</td>
+                  <td style={{ textAlign: 'right' }}>
+                    <button className="icon-btn" disabled={busy} onClick={() => deactivate(t.id)} title="Deactivate team" aria-label="Deactivate team">✕</button>
+                  </td>
+                </tr>
+              ))}
+              {teams.length === 0 && (
+                <tr><td colSpan={4}>No teams yet.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {credential && (

@@ -57,6 +57,7 @@ const CODE_MAP = {
   TEAM_NOT_AFFECTED: 'That team is not listed as affected by this crisis.',
   TRADING_DISABLED: 'Card trading is currently switched off by the Super Admins.',
   CANNOT_TRADE_SELF: 'A team cannot trade with itself.',
+  DEAL_TRADES_ONLY_WITH_DEAL: 'A Deal card can only be traded for another Deal card.',
   BAD_MONEY_AMOUNT: 'The money amount cannot be negative.',
   MONEY_TEAM_INVALID: 'The paying team must be one of the two teams in the trade.',
 };

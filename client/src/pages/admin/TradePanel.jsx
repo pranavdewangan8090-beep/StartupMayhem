@@ -2,6 +2,12 @@ import { useEffect, useState } from 'react';
 import { supabase, call, newRequestId, ApiError } from '../../lib/supabase.js';
 import { useToast } from '../../lib/ToastContext.jsx';
 
+// Matches ActionCardsTab.jsx's CAT_LABEL — the 'action' DB category displays
+// as "Special Card" and 'special' as "Action Card", so this dropdown needs
+// the same mapping rather than the raw category value, or it'd mislead an
+// admin about which cards the deal-only-trades-with-deal rule applies to.
+const CAT_LABEL = { action: 'Special Card', deal: 'Deal', special: 'Action Card' };
+
 const emptyForm = {
   teamAId: '', teamACardId: '',
   teamBId: '', teamBCardId: '',
@@ -99,7 +105,7 @@ export default function TradePanel() {
             <label>Team A's card to give up</label>
             <select value={form.teamACardId} onChange={(e) => setForm({ ...form, teamACardId: e.target.value })} disabled={!form.teamAId}>
               <option value="">Select card…</option>
-              {teamACards.map((c) => <option key={c.id} value={c.id}>{c.name} ({c.category})</option>)}
+              {teamACards.map((c) => <option key={c.id} value={c.id}>{c.name} ({CAT_LABEL[c.category] || c.category})</option>)}
             </select>
           </div>
 
@@ -114,7 +120,7 @@ export default function TradePanel() {
             <label>Team B's card to give up</label>
             <select value={form.teamBCardId} onChange={(e) => setForm({ ...form, teamBCardId: e.target.value })} disabled={!form.teamBId}>
               <option value="">Select card…</option>
-              {teamBCards.map((c) => <option key={c.id} value={c.id}>{c.name} ({c.category})</option>)}
+              {teamBCards.map((c) => <option key={c.id} value={c.id}>{c.name} ({CAT_LABEL[c.category] || c.category})</option>)}
             </select>
           </div>
 

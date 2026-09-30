@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase, call, ApiError } from '../../lib/supabase.js';
 import { useToast } from '../../lib/ToastContext.jsx';
+import Switch from '../../components/Switch.jsx';
 
 const TOGGLES = [
   { key: 'r1_replace_open', label: 'R1: Card Replacements' },
@@ -26,19 +27,22 @@ export default function ControlRoomTab() {
   const [selectedCrisisId, setSelectedCrisisId] = useState(null);
   const [crisisEffects, setCrisisEffects] = useState([]);
   const [tradeToggles, setTradeToggles] = useState(null);
+  const [tradeStatus, setTradeStatus] = useState(null);
   const [busy, setBusy] = useState(false);
   const toast = useToast();
 
   async function load() {
     try {
-      const [t, cr, tt] = await Promise.all([
+      const [t, cr, tt, ts] = await Promise.all([
         call(supabase.rpc('fn_super_toggles_get')),
         call(supabase.rpc('fn_admin_crisis_list')),
         call(supabase.rpc('fn_super_trade_toggles_all')),
+        call(supabase.rpc('fn_trade_feature_status')),
       ]);
       setToggles(t);
       setCrises(cr);
       setTradeToggles(tt);
+      setTradeStatus(Array.isArray(ts) ? ts[0] : ts);
       const firstTriggered = cr.find((c) => c.is_triggered)?.id ?? null;
       const nextSelected = selectedCrisisId ?? firstTriggered;
       setSelectedCrisisId(nextSelected);
@@ -107,36 +111,30 @@ export default function ControlRoomTab() {
     <div>
       <div className="desktop-grid">
         <div className="card-surface section">
-          <h2>Game Toggles</h2>
+          <div className="admin-card-head"><h2>Game Toggles</h2></div>
           {TOGGLES.map((t) => (
             <div key={t.key} className="toggle-row">
               <span>{t.label}</span>
-              <button
-                className={`btn btn-sm ${toggles[t.key] ? 'btn-success' : 'btn-ghost'}`}
-                disabled={busy}
-                onClick={() => flip(t.key, !toggles[t.key])}
-              >
-                {toggles[t.key] ? 'ON' : 'OFF'}
-              </button>
+              <Switch on={!!toggles[t.key]} disabled={busy} onClick={() => flip(t.key, !toggles[t.key])} label={t.label} />
             </div>
           ))}
         </div>
 
         <div className="card-surface section">
-          <h2>Card Trading</h2>
-          <p>
-            Overall status: <b className={effectiveTradingOn ? 'success-text' : 'warning-text'}>
-              {effectiveTradingOn ? 'ENABLED' : 'DISABLED'}
-            </b>
-          </p>
-          <p>ON as soon as one Super Admin enables it. OFF only once every Super Admin disables it.</p>
-          <div className="row" style={{ gap: 8, marginTop: 8 }}>
-            <button className="btn btn-success btn-sm" disabled={busy} onClick={() => toggleTrading(true)}>Turn ON (mine)</button>
-            <button className="btn btn-danger btn-sm" disabled={busy} onClick={() => toggleTrading(false)}>Turn OFF (mine)</button>
+          <div className="admin-card-head">
+            <h2>Card Trading</h2>
+            <span className={`pill ${effectiveTradingOn ? 'tier-gains' : 'tier-unaffected'}`}>
+              {effectiveTradingOn ? 'Enabled' : 'Disabled'}
+            </span>
           </div>
+          <div className="toggle-row">
+            <span>My setting</span>
+            <Switch on={!!tradeStatus?.mine} disabled={busy} onClick={() => toggleTrading(!tradeStatus?.mine)} label="My trading toggle" />
+          </div>
+          <p className="admin-card-hint">Needs every Super Admin off to fully disable.</p>
           <div className="table-scroll" style={{ marginTop: 12 }}>
             <table className="data-table">
-              <thead><tr><th>Super Admin</th><th>Their Setting</th></tr></thead>
+              <thead><tr><th>Super Admin</th><th>Setting</th></tr></thead>
               <tbody>
                 {tradeToggles?.map((t) => (
                   <tr key={t.super_admin_login}>
@@ -150,14 +148,14 @@ export default function ControlRoomTab() {
         </div>
 
         <div className="card-surface section">
-          <h2>Round 3: Crises</h2>
-          <p>{triggeredCount} of {crises.length} crises triggered.</p>
-          <div className="row" style={{ gap: 8, marginTop: 8 }}>
-            <button className="btn btn-danger" disabled={busy || allTriggered} onClick={triggerCrisis}>
-              {allTriggered ? 'All Crises Triggered' : 'Trigger Next Crisis'}
-            </button>
+          <div className="admin-card-head">
+            <h2>Round 3: Crises</h2>
+            <span className="admin-card-hint">{triggeredCount}/{crises.length} triggered</span>
           </div>
-          <div className="row" style={{ gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+          <button className="btn btn-danger btn-sm" disabled={busy || allTriggered} onClick={triggerCrisis}>
+            {allTriggered ? 'All Crises Triggered' : 'Trigger Next Crisis'}
+          </button>
+          <div className="row" style={{ gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
             {crises.filter((c) => c.is_triggered).map((c) => (
               <button
                 key={c.id}
@@ -172,10 +170,12 @@ export default function ControlRoomTab() {
       </div>
 
       {selectedCrisis && (
-        <div className="card-surface section">
-          <h2>Crisis {selectedCrisis.number}: {selectedCrisis.title}</h2>
-          <p>{selectedCrisis.description || 'Every active team\'s tier was determined automatically by their Market card, and the effect below was already applied to their resources the moment this crisis was triggered.'}</p>
-          <div className="table-scroll">
+        <div className="card-surface section" style={{ marginTop: 16 }}>
+          <div className="admin-card-head">
+            <h2>Crisis {selectedCrisis.number}: {selectedCrisis.title}</h2>
+          </div>
+          <p className="admin-card-hint">{selectedCrisis.description || 'Every active team\'s tier was determined automatically by their Market card, and the effect below was already applied to their resources the moment this crisis was triggered.'}</p>
+          <div className="table-scroll" style={{ marginTop: 12 }}>
             <table className="data-table">
               <thead><tr><th>Team</th><th>Tier</th><th>Effect Applied</th></tr></thead>
               <tbody>

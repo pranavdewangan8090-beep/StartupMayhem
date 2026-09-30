@@ -3,13 +3,13 @@ import { useAuth } from '../../lib/AuthContext.jsx';
 import ECellLogo from '../../components/ECellLogo.jsx';
 import TeamResourcePanel from '../../components/TeamResourcePanel.jsx';
 import ControlRoomTab from './ControlRoomTab.jsx';
-import ScoresTab from './ScoresTab.jsx';
+import LeaderboardTab from './LeaderboardTab.jsx';
 import TeamManagementTab from './TeamManagementTab.jsx';
 
 const TABS = [
   { key: 'control', label: 'Control Room' },
   { key: 'teams', label: 'Teams' },
-  { key: 'scores', label: 'Scores' },
+  { key: 'scores', label: 'Leaderboard' },
   { key: 'manage', label: 'Manage Teams' },
 ];
 
@@ -39,7 +39,7 @@ export default function SuperAdminApp() {
         <div className="super-main-body">
           {tab === 'control' && <ControlRoomTab />}
           {tab === 'teams' && <TeamResourcePanel />}
-          {tab === 'scores' && <ScoresTab />}
+          {tab === 'scores' && <LeaderboardTab />}
           {tab === 'manage' && <TeamManagementTab />}
         </div>
       </main>
