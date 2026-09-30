@@ -3,6 +3,7 @@ import { supabase, call, ApiError } from '../../lib/supabase.js';
 import { useToast } from '../../lib/ToastContext.jsx';
 import Switch from '../../components/Switch.jsx';
 import ConfirmModal from '../../components/ConfirmModal.jsx';
+import MayhemReveal from '../../components/MayhemReveal.jsx';
 
 const TOGGLES = [
   { key: 'r1_replace_open', label: 'R1: Card Replacements' },
@@ -30,6 +31,7 @@ export default function ControlRoomTab() {
   const [tradeStatus, setTradeStatus] = useState(null);
   const [busy, setBusy] = useState(false);
   const [confirmCrisis, setConfirmCrisis] = useState(null); // the crisis row about to be triggered
+  const [revealCrisis, setRevealCrisis] = useState(null); // the crisis card shown player-side, replayed here
   const toast = useToast();
 
   async function load() {
@@ -90,6 +92,8 @@ export default function ControlRoomTab() {
       await load();
       setSelectedCrisisId(triggered.id);
       await loadCrisisDetail(triggered.id);
+      // Show the same full-screen card every player's phone just got.
+      setRevealCrisis({ crisis_id: triggered.id, title: triggered.title, description: triggered.description });
     } catch (err) {
       setConfirmCrisis(null);
       toast(err instanceof ApiError ? err.message : 'Could not trigger the next crisis.', 'error');
@@ -184,6 +188,12 @@ export default function ControlRoomTab() {
         <div className="card-surface section" style={{ marginTop: 16 }}>
           <div className="admin-card-head">
             <h2>Crisis {selectedCrisis.number}: {selectedCrisis.title}</h2>
+            <button
+              className="btn btn-ghost btn-sm"
+              onClick={() => setRevealCrisis({ crisis_id: selectedCrisis.id, title: selectedCrisis.title, description: selectedCrisis.description })}
+            >
+              View Card
+            </button>
           </div>
           <p className="admin-card-hint">{selectedCrisis.description || 'Every active team\'s tier was determined automatically by their Market card, and the effect below was already applied to their resources the moment this crisis was triggered.'}</p>
           <div className="table-scroll" style={{ marginTop: 12 }}>
@@ -205,6 +215,8 @@ export default function ControlRoomTab() {
           </div>
         </div>
       )}
+
+      {revealCrisis && <MayhemReveal crisis={revealCrisis} onClose={() => setRevealCrisis(null)} />}
 
       {confirmCrisis && (
         <ConfirmModal
