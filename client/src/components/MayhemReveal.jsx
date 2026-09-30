@@ -2,6 +2,12 @@ import { useEffect, useRef } from 'react';
 import { gsap } from 'gsap';
 
 const TIER_LABEL = { hit_hard: 'HIT HARD', hit: 'HIT', unaffected: 'UNAFFECTED', gains: 'GAINS' };
+const TIER_ROWS = [
+  ['hit_hard', 'Hit Hard', 'hit_hard_teams'],
+  ['hit', 'Hit', 'hit_teams'],
+  ['gains', 'Gains', 'gains_teams'],
+  ['unaffected', 'Unaffected', 'unaffected_teams'],
+];
 
 function formatDelta(applied) {
   if (!applied) return null;
@@ -65,6 +71,15 @@ export default function MayhemReveal({ crisis, onClose }) {
             <b>Effect on your company:</b> {formatDelta(crisis.applied)}
           </p>
         )}
+        <div className="mayhem-affected-teams">
+          {TIER_ROWS.map(([tier, label, key]) => (
+            crisis[key]?.length > 0 && (
+              <p key={tier} className="mayhem-affected-row">
+                <span className={`pill tier-${tier}`}>{label}</span> {crisis[key].join(', ')}
+              </p>
+            )
+          ))}
+        </div>
         <button className="btn btn-primary btn-block" style={{ marginTop: 20 }} onClick={onClose}>
           Acknowledge
         </button>

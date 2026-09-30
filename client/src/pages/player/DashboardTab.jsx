@@ -2,6 +2,12 @@ import { useEffect, useState } from 'react';
 import { supabase, call } from '../../lib/supabase.js';
 
 const TIER_LABEL = { hit_hard: 'Hit Hard', hit: 'Hit', unaffected: 'Unaffected', gains: 'Gains' };
+const TIER_ROWS = [
+  ['hit_hard', 'Hit Hard', 'hit_hard_teams'],
+  ['hit', 'Hit', 'hit_teams'],
+  ['gains', 'Gains', 'gains_teams'],
+  ['unaffected', 'Unaffected', 'unaffected_teams'],
+];
 
 function formatDelta(applied) {
   if (!applied) return null;
@@ -51,6 +57,13 @@ export default function DashboardTab() {
                   Effect on your company: {formatDelta(c.applied)}
                 </p>
               )}
+              {TIER_ROWS.map(([tier, label, key]) => (
+                c[key]?.length > 0 && (
+                  <p key={tier} className="mayhem-affected-row">
+                    <span className={`pill tier-${tier}`}>{label}</span> {c[key].join(', ')}
+                  </p>
+                )
+              ))}
             </div>
           ))}
         </div>

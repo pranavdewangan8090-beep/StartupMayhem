@@ -96,27 +96,27 @@ export default function ActionCardsTab({ gameState, onChanged }) {
       )}
 
       <div className="card-surface section">
-        <h2>Your Action Cards ({hand.filter((c) => c.status !== 'used').length}/3)</h2>
+        <h2>Your Special Cards ({hand.filter((c) => c.status !== 'used').length}/3)</h2>
         <p>You were issued one Special, one Deal and one Action card at the start of the game. You can exchange one of these for a different card during Round 3, through an admin-processed trade — a Deal card can only be traded for another Deal card.</p>
         {hand.length === 0 && <p>Loading your cards…</p>}
         <div className="action-grid">
           {hand.map((c) => (
             <div key={c.id} className={`action-card-tile cat-${c.category}`}>
               <span className={`pill cat-${c.category}`}>{CAT_LABEL[c.category]}</span>
-              <div className="name" style={{ marginTop: 6 }}>{c.name}</div>
+              <div className="name">{c.name}</div>
               <div className="effect">{c.effect_text}</div>
-              {c.status === 'pending' && <p>Awaiting response…</p>}
-              {c.status === 'used' && <p>Already used.</p>}
+              {c.status === 'pending' && <p className="status-text">Awaiting response</p>}
+              {c.status === 'used' && <p className="status-text">Already used</p>}
               {c.status === 'held' && gameState?.card_play_open && (
                 <div className="row">
                   {c.category === 'action' || c.category === 'special' ? (
-                    <button className="btn btn-primary btn-sm" disabled={busy} onClick={() => playSelf(c.id)}>Play</button>
+                    <button className="btn btn-primary" disabled={busy} onClick={() => playSelf(c.id)}>Play</button>
                   ) : (
-                    <button className="btn btn-ghost btn-sm" disabled={busy} onClick={() => setPlayTarget({ card: c })}>Propose Deal…</button>
+                    <button className="btn btn-ghost" disabled={busy} onClick={() => setPlayTarget({ card: c })}>Propose Deal</button>
                   )}
                 </div>
               )}
-              {c.status === 'held' && !gameState?.card_play_open && <p className="warning-text">Playing cards is closed right now.</p>}
+              {c.status === 'held' && !gameState?.card_play_open && <p className="status-text warning-text">Playing cards is closed right now</p>}
             </div>
           ))}
         </div>

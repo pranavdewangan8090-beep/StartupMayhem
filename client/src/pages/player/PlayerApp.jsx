@@ -12,7 +12,7 @@ import ActionCardsTab from './ActionCardsTab.jsx';
 const TABS = [
   { key: 'dashboard', label: 'Dashboard' },
   { key: 'cards', label: 'My Cards' },
-  { key: 'action', label: 'Action Cards' },
+  { key: 'action', label: 'Special Cards' },
 ];
 
 export default function PlayerApp() {
