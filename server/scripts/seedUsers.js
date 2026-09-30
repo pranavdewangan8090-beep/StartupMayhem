@@ -1,8 +1,21 @@
-// Creates the real accounts for the event: 30 teams (with a random deal of the
-// 5 identity cards each), 20 admins, 10 super admins. Passwords are randomly
-// generated and written to a local CSV — this file is NEVER committed
-// (it's covered by .gitignore) and should be deleted/moved somewhere safe
-// once you've handed out credentials.
+// Resets and re-creates the real accounts for the event: wipes every team,
+// user, and any game data hanging off a team (action cards, trades, crisis
+// effects), then creates 30 teams (with a random deal of the 5 identity
+// cards each), 20 admins, 10 super admins. Passwords and login IDs are
+// randomly generated and written to a local CSV — this file is NEVER
+// committed (it's covered by .gitignore) and should be deleted/moved
+// somewhere safe once you've handed out credentials.
+//
+// Credential design: the team's display code (T01..T30, used everywhere in
+// the UI/leaderboard) stays simple and sequential, but the LOGIN ID is a
+// separate value with a short random suffix (T07-K3F9) — guessing a team's
+// public T-number no longer gets you their login. Admin/super_admin login
+// IDs drop sequential numbering entirely (AD-xxxx / SA-xxxx) since there's
+// no legitimate reason for those to be guessable in order. Passwords are a
+// simple 6-digit PIN — safe given fn_login's per-account rate limit (8
+// failed attempts locks the account for 5 minutes, see
+// server/sql/015_login_rate_limit.sql), and much faster to type on a phone
+// under event conditions than a mixed-case password.
 //
 // Usage: node scripts/seedUsers.js
 import 'dotenv/config';
@@ -15,12 +28,30 @@ const TEAM_COUNT = 30;
 const ADMIN_COUNT = 20;
 const SUPER_ADMIN_COUNT = 10;
 
-function randomPassword() {
-  // 8 chars, unambiguous alphabet (no 0/O, 1/I/l) — easy to hand-write on a card
-  const alphabet = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
-  return Array.from(crypto.randomFillSync(new Uint8Array(8)))
-    .map((b) => alphabet[b % alphabet.length])
+// Unambiguous alphabet (no 0/O, 1/I/l) — easy to hand-write and read aloud.
+const ID_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+
+function randomSuffix(len) {
+  return Array.from(crypto.randomFillSync(new Uint8Array(len)))
+    .map((b) => ID_ALPHABET[b % ID_ALPHABET.length])
     .join('');
+}
+
+function randomPin() {
+  // 6-digit numeric PIN, no leading-zero restriction — just a string of digits.
+  return Array.from(crypto.randomFillSync(new Uint8Array(6)))
+    .map((b) => String(b % 10))
+    .join('');
+}
+
+/** A random suffix that hasn't been used yet for this prefix, tracked in `used`. */
+function uniqueLoginId(prefix, used) {
+  let id;
+  do {
+    id = `${prefix}${randomSuffix(4)}`;
+  } while (used.has(id));
+  used.add(id);
+  return id;
 }
 
 async function pickRandomCardId(client, category, exclude = []) {
@@ -35,12 +66,22 @@ async function main() {
   const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
   const client = await pool.connect();
   const csvRows = ['role,login_id,password,team_code'];
+  const usedLoginIds = new Set();
 
   try {
     await client.query('BEGIN');
 
+    // Full reset: wiping teams cascades to their users, action cards, card
+    // plays, trades, and crisis effects; a separate delete clears the
+    // team-less admin/super_admin users. login_attempts is cleared too, so
+    // no stale lockout carries into the event.
+    await client.query('delete from teams');
+    await client.query('delete from users');
+    await client.query('delete from login_attempts');
+
     for (let i = 1; i <= TEAM_COUNT; i++) {
       const teamCode = `T${String(i).padStart(2, '0')}`;
+      const loginId = uniqueLoginId(`${teamCode}-`, usedLoginIds);
       const marketId = await pickRandomCardId(client, 'market');
       const customerId = await pickRandomCardId(client, 'customer');
       const missionId = await pickRandomCardId(client, 'mission');
@@ -61,27 +102,29 @@ async function main() {
       );
       const teamId = teamRows[0].id;
 
-      const password = randomPassword();
+      const password = randomPin();
       const hash = await bcrypt.hash(password, 10);
       await client.query(
         `insert into users (role, login_id, password_hash, team_id) values ('player', $1, $2, $3)`,
-        [teamCode, hash, teamId]
+        [loginId, hash, teamId]
       );
-      csvRows.push(`player,${teamCode},${password},${teamCode}`);
+      csvRows.push(`player,${loginId},${password},${teamCode}`);
     }
 
     for (let i = 1; i <= ADMIN_COUNT; i++) {
-      const password = randomPassword();
+      const loginId = uniqueLoginId('AD-', usedLoginIds);
+      const password = randomPin();
       const hash = await bcrypt.hash(password, 10);
-      await client.query(`insert into users (role, login_id, password_hash) values ('admin', $1, $2)`, [String(i), hash]);
-      csvRows.push(`admin,${i},${password},`);
+      await client.query(`insert into users (role, login_id, password_hash) values ('admin', $1, $2)`, [loginId, hash]);
+      csvRows.push(`admin,${loginId},${password},`);
     }
 
     for (let i = 1; i <= SUPER_ADMIN_COUNT; i++) {
-      const password = randomPassword();
+      const loginId = uniqueLoginId('SA-', usedLoginIds);
+      const password = randomPin();
       const hash = await bcrypt.hash(password, 10);
-      await client.query(`insert into users (role, login_id, password_hash) values ('super_admin', $1, $2)`, [String(i), hash]);
-      csvRows.push(`super_admin,${i},${password},`);
+      await client.query(`insert into users (role, login_id, password_hash) values ('super_admin', $1, $2)`, [loginId, hash]);
+      csvRows.push(`super_admin,${loginId},${password},`);
     }
 
     await client.query('COMMIT');
@@ -95,7 +138,7 @@ async function main() {
 
   const outPath = new URL('./credentials.local.csv', import.meta.url);
   fs.writeFileSync(outPath, csvRows.join('\n') + '\n');
-  console.log(`Created ${TEAM_COUNT} teams, ${ADMIN_COUNT} admins, ${SUPER_ADMIN_COUNT} super admins.`);
+  console.log(`Reset complete: ${TEAM_COUNT} teams, ${ADMIN_COUNT} admins, ${SUPER_ADMIN_COUNT} super admins.`);
   console.log(`Credentials written to ${outPath.pathname} — keep this file safe and do not commit it.`);
 }
 

@@ -65,7 +65,7 @@ export default function Login() {
                 autoCapitalize="characters"
                 value={loginId}
                 onChange={(e) => setLoginId(e.target.value)}
-                placeholder={role === 'player' ? 'T01' : '1'}
+                placeholder={role === 'player' ? 'T01-XXXX' : role === 'admin' ? 'AD-XXXX' : 'SA-XXXX'}
               />
             </div>
             <div className="field">

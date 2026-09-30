@@ -62,9 +62,10 @@ export default function TeamManagementTab() {
 
       {credential && (
         <Modal onClose={() => setCredential(null)}>
-          <h2>Team Created</h2>
+          <h2>Team Created — {credential.teamCode}</h2>
           <p>Give this to the team — it will not be shown again.</p>
-          <p><b>{credential.teamCode}</b> / <b>{credential.password}</b></p>
+          <p>Login ID: <b>{credential.loginId}</b></p>
+          <p>Password: <b>{credential.password}</b></p>
         </Modal>
       )}
     </div>
