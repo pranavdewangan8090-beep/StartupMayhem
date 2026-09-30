@@ -81,7 +81,7 @@ export default function LeaderboardTab() {
                 <td>
                   <div>{r.missionTitle} (+{r.bonusPoints})</div>
                   <button
-                    className={`btn btn-sm ${r.missionCompleted ? 'btn-success' : 'btn-ghost'}`}
+                    className={`btn btn-sm mission-mark-btn ${r.missionCompleted ? 'btn-success' : 'btn-ghost'}`}
                     disabled={busyTeamId === r.teamId}
                     onClick={() => setMission(r, !r.missionCompleted)}
                     title={r.missionCompleted ? 'Click to undo' : 'Mark this mission as completed'}

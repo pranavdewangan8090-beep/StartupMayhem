@@ -194,6 +194,9 @@ p { color: var(--text-dim); line-height: 1.45; margin: 4px 0; }
 .btn-ghost:hover { border-color: var(--border-strong); }
 .btn-block { width: 100%; }
 .btn-sm { padding: 8px 12px; font-size: 0.8rem; border-radius: 10px; }
+/* Leaderboard's "Mark complete" — smaller still, it sits under a mission
+   title + bonus points in a table cell and doesn't need full .btn-sm size. */
+.mission-mark-btn { padding: 4px 10px; font-size: 0.72rem; border-radius: 8px; margin-top: 4px; }
 
 .pill {
   display: inline-block;
