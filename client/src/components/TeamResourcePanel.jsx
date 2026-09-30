@@ -49,8 +49,14 @@ export default function TeamResourcePanel() {
     if (!delta) { toast('Delta cannot be zero.', 'error'); return; }
     setBusy(true);
     try {
-      await call(supabase.rpc('fn_admin_adjust_decision_points', { p_team_id: modal.team.id, p_payload: { delta } }));
-      toast('Decision points recorded.', 'success');
+      const updated = await call(supabase.rpc('fn_admin_adjust_decision_points', { p_team_id: modal.team.id, p_payload: { delta } }));
+      const row = Array.isArray(updated) ? updated[0] : updated;
+      // The Leaderboard's "Decision" score clamps to 0-100, so a team deep
+      // in the negative (from an earlier crisis hit, say) can take a real,
+      // saved adjustment and show no visible change there at all — showing
+      // the actual new total here is the only confirmation the save
+      // happened without having to go check the Leaderboard separately.
+      toast(`${modal.team.team_code}'s points: ${row?.decision_points ?? '?'} (${delta > 0 ? '+' : ''}${delta})`, 'success');
       setModal(null);
     } catch (err) {
       toast(err instanceof ApiError ? err.message : 'Could not record points.', 'error');
