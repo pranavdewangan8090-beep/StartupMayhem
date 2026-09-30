@@ -119,17 +119,40 @@ export default function ControlRoomTab() {
   return (
     <div>
       <div className="control-room-top-row">
-        <div className="card-surface section">
-          <div className="admin-card-head"><h2>Game Toggles</h2></div>
-          {TOGGLES.map((t) => (
-            <div key={t.key} className="toggle-row">
-              <span>{t.label}</span>
-              <Switch on={!!toggles[t.key]} disabled={busy} onClick={() => flip(t.key, !toggles[t.key])} label={t.label} />
+        <div className="control-room-left-col">
+          <div className="card-surface">
+            <div className="admin-card-head"><h2>Game Toggles</h2></div>
+            {TOGGLES.map((t) => (
+              <div key={t.key} className="toggle-row">
+                <span>{t.label}</span>
+                <Switch on={!!toggles[t.key]} disabled={busy} onClick={() => flip(t.key, !toggles[t.key])} label={t.label} />
+              </div>
+            ))}
+          </div>
+
+          <div className="card-surface">
+            <div className="admin-card-head">
+              <h2>Round 3: Crises</h2>
+              <span className="admin-card-hint">{triggeredCount}/{crises.length} triggered</span>
             </div>
-          ))}
+            <button className="btn btn-danger btn-sm" disabled={busy || allTriggered || !nextCrisis} onClick={() => setConfirmCrisis(nextCrisis)}>
+              {allTriggered ? 'All Crises Triggered' : `Trigger Crisis ${nextCrisis?.number ?? ''}`}
+            </button>
+            <div className="row" style={{ gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+              {crises.filter((c) => c.is_triggered).map((c) => (
+                <button
+                  key={c.id}
+                  className={`btn btn-sm ${selectedCrisisId === c.id ? 'btn-primary' : 'btn-ghost'}`}
+                  onClick={() => selectCrisis(c.id)}
+                >
+                  {c.title}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
-        <div className="card-surface section">
+        <div className="card-surface">
           <div className="admin-card-head">
             <h2>Card Trading</h2>
             <span className={`pill ${effectiveTradingOn ? 'tier-gains' : 'tier-unaffected'}`}>
@@ -154,27 +177,6 @@ export default function ControlRoomTab() {
               </tbody>
             </table>
           </div>
-        </div>
-      </div>
-
-      <div className="card-surface section" style={{ marginTop: 16 }}>
-        <div className="admin-card-head">
-          <h2>Round 3: Crises</h2>
-          <span className="admin-card-hint">{triggeredCount}/{crises.length} triggered</span>
-        </div>
-        <button className="btn btn-danger btn-sm" disabled={busy || allTriggered || !nextCrisis} onClick={() => setConfirmCrisis(nextCrisis)}>
-          {allTriggered ? 'All Crises Triggered' : `Trigger Crisis ${nextCrisis?.number ?? ''}`}
-        </button>
-        <div className="row" style={{ gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
-          {crises.filter((c) => c.is_triggered).map((c) => (
-            <button
-              key={c.id}
-              className={`btn btn-sm ${selectedCrisisId === c.id ? 'btn-primary' : 'btn-ghost'}`}
-              onClick={() => selectCrisis(c.id)}
-            >
-              {c.title}
-            </button>
-          ))}
         </div>
       </div>
 
