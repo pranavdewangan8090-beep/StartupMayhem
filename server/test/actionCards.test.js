@@ -65,24 +65,6 @@ describe('playing action cards', () => {
     assert.equal(handAfter.find((c) => c.id === actionOrSpecial.id).status, 'used');
   });
 
-  test('a deal card proposes to a partner, who can accept it', async () => {
-    const hand = await playerA.rpc('fn_player_hand');
-    const dealCard = hand.find((c) => c.category === 'deal' && c.status === 'held');
-    const play = await playerA.rpc('fn_play_deal_card', {
-      p_team_action_card_id: dealCard.id, p_partner_team_id: teamB.teamId, p_request_id: randomId(),
-    });
-    assert.equal(play.status, 'pending');
-
-    const incoming = await playerB.rpc('fn_deals_incoming');
-    const offer = incoming.find((d) => d.id === play.id || String(d.id) === String(play.id));
-    assert.ok(offer, 'partner should see the pending offer');
-
-    const result = await playerB.rpc('fn_respond_deal_card', { p_card_play_id: play.id, p_accept: true, p_request_id: randomId() });
-    assert.equal(result.accepted, true);
-    assert.ok(result.initiator_after);
-    assert.ok(result.partner_after);
-  });
-
   test('cannot target your own team with a deal card', async () => {
     const hand = await playerB.rpc('fn_player_hand');
     const dealCard = hand.find((c) => c.category === 'deal' && c.status === 'held');
@@ -133,5 +115,36 @@ describe('playing action cards', () => {
       (err) => err.message === 'DEAL_NOT_FOUND'
     );
     await playerB.rpc('fn_cancel_deal_card', { p_card_play_id: play.id });
+  });
+
+  // Runs last in this describe block — it's the only test here that
+  // actually completes a deal, and since server/sql/027_round_mechanics.sql
+  // both teams' deal cards are consumed on accept (not just the
+  // initiator's), so nothing after this can rely on playerA/playerB still
+  // holding their original deal card.
+  test('a deal card proposes to a partner, who can accept it (both cards consumed)', async () => {
+    const handABefore = await playerA.rpc('fn_player_hand');
+    const handBBefore = await playerB.rpc('fn_player_hand');
+    const dealCardA = handABefore.find((c) => c.category === 'deal' && c.status === 'held');
+    const dealCardB = handBBefore.find((c) => c.category === 'deal' && c.status === 'held');
+
+    const play = await playerA.rpc('fn_play_deal_card', {
+      p_team_action_card_id: dealCardA.id, p_partner_team_id: teamB.teamId, p_request_id: randomId(),
+    });
+    assert.equal(play.status, 'pending');
+
+    const incoming = await playerB.rpc('fn_deals_incoming');
+    const offer = incoming.find((d) => d.id === play.id || String(d.id) === String(play.id));
+    assert.ok(offer, 'partner should see the pending offer');
+
+    const result = await playerB.rpc('fn_respond_deal_card', { p_card_play_id: play.id, p_accept: true, p_request_id: randomId() });
+    assert.equal(result.accepted, true);
+    assert.ok(result.initiator_after);
+    assert.ok(result.partner_after);
+
+    const handAAfter = await playerA.rpc('fn_player_hand');
+    const handBAfter = await playerB.rpc('fn_player_hand');
+    assert.equal(handAAfter.find((c) => c.id === dealCardA.id).status, 'used', 'initiator\'s deal card should be used');
+    assert.equal(handBAfter.find((c) => c.id === dealCardB.id).status, 'used', 'partner\'s own deal card should ALSO be used — deals are paired');
   });
 });
