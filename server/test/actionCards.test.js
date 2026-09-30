@@ -25,6 +25,13 @@ before(async () => {
   await playerA.login('player', teamA.loginId, teamA.password);
   playerB = new Session();
   await playerB.login('player', teamB.loginId, teamB.password);
+
+  // Card costs and starting cash are both randomly dealt — a low-cash team
+  // paired with a costly card would hit INSUFFICIENT_CASH, which is correct
+  // real behavior but makes these tests flaky. Top up so affordability is
+  // never in question here.
+  await superAdmin.rpc('fn_admin_adjust_resources', { p_team_id: teamA.teamId, p_delta: { cash_l: 100 } });
+  await superAdmin.rpc('fn_admin_adjust_resources', { p_team_id: teamB.teamId, p_delta: { cash_l: 100 } });
 });
 
 after(async () => {

@@ -46,6 +46,14 @@ describe('deal cards are used in pairs', () => {
     playerA = new Session(); await playerA.login('player', teamA.loginId, teamA.password);
     playerB = new Session(); await playerB.login('player', teamB.loginId, teamB.password);
     playerC = new Session(); await playerC.login('player', teamC.loginId, teamC.password);
+
+    // Card costs and starting cash are both randomly dealt — a low-cash
+    // team paired with a costly card hits INSUFFICIENT_CASH, which is
+    // correct real behavior but makes this flaky as a test. Top up so
+    // affordability is never in question here.
+    for (const t of [teamA, teamB, teamC]) {
+      await superAdmin.rpc('fn_admin_adjust_resources', { p_team_id: t.teamId, p_delta: { cash_l: 100 } });
+    }
   });
 
   after(async () => {
