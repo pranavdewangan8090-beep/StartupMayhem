@@ -1,7 +1,17 @@
 import { useEffect, useState } from 'react';
 import { supabase, call } from '../../lib/supabase.js';
 
-const STATUS_LABEL = { pending: 'Awaiting response', used_card: 'Protected — used action card', traded: 'Protected — traded for a card', penalized: 'Penalized' };
+const TIER_LABEL = { hit_hard: 'Hit Hard', hit: 'Hit', unaffected: 'Unaffected', gains: 'Gains' };
+
+function formatDelta(applied) {
+  if (!applied) return null;
+  const parts = [];
+  if (applied.cash_l) parts.push(`${applied.cash_l > 0 ? '+' : ''}₹${applied.cash_l / 10}M Cash`);
+  if (applied.customers) parts.push(`${applied.customers > 0 ? '+' : ''}${applied.customers / 1000}k Customers`);
+  if (applied.reputation) parts.push(`${applied.reputation > 0 ? '+' : ''}${applied.reputation} Reputation`);
+  if (applied.innovation) parts.push(`${applied.innovation > 0 ? '+' : ''}${applied.innovation} Innovation`);
+  return parts.length ? parts.join(' · ') : 'No change';
+}
 
 export default function DashboardTab() {
   const [status, setStatus] = useState(null);
@@ -28,20 +38,18 @@ export default function DashboardTab() {
 
       {crises.length > 0 && (
         <div className="card-surface section">
-          <h2>Active Crises</h2>
+          <h2>Crises</h2>
           {crises.map((c) => (
-            <div key={c.crisis_id} style={{ marginBottom: 16, paddingBottom: 16, borderBottom: '1px solid var(--border-color, #333)' }}>
-              <h3>{c.title}</h3>
+            <div key={c.crisis_id} className="crisis-entry">
+              <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+                <h3 style={{ margin: 0 }}>{c.title}</h3>
+                {c.tier && <span className={`pill tier-${c.tier}`}>{TIER_LABEL[c.tier]}</span>}
+              </div>
               <p>{c.description}</p>
-              <p><b>Useful action cards:</b> {c.useful_card_names?.length ? c.useful_card_names.join(', ') : 'None listed'}</p>
-              <p><b>Affected teams:</b> {c.affected_team_codes?.length ? c.affected_team_codes.join(', ') : 'None yet'}</p>
-              {c.is_affected ? (
-                <p className={c.my_status === 'penalized' ? 'warning-text' : 'success-text'}>
-                  Your team is affected — status: {STATUS_LABEL[c.my_status] || 'Awaiting response'}.
-                  {c.my_status === 'pending' && ' If you don’t have a useful action card, try trading with another team, then see an admin.'}
+              {c.tier && (
+                <p className={c.tier === 'hit_hard' || c.tier === 'hit' ? 'warning-text' : 'success-text'}>
+                  Effect on your company: {formatDelta(c.applied)}
                 </p>
-              ) : (
-                <p>Your team is not on the affected list for this crisis.</p>
               )}
             </div>
           ))}

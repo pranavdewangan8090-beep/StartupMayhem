@@ -691,11 +691,14 @@ table.data-table th { color: var(--text-dim); font-weight: 600; font-size: 0.72r
 }
 .toggle-row:last-child { border-bottom: none; }
 
-/* Round 3: Market Mayhem — tier pills, response form, full-screen reveal */
+/* Round 3: Crises — tier pills, entries, full-screen reveal */
 .pill.tier-hit_hard { background: color-mix(in srgb, var(--danger) 20%, transparent); color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, transparent); }
 .pill.tier-hit { background: color-mix(in srgb, var(--warning) 18%, transparent); color: var(--warning); border-color: color-mix(in srgb, var(--warning) 40%, transparent); }
 .pill.tier-unaffected { background: rgba(255, 255, 255, 0.06); color: var(--text-dim); border-color: var(--border); }
 .pill.tier-gains { background: color-mix(in srgb, var(--success) 18%, transparent); color: var(--success); border-color: color-mix(in srgb, var(--success) 40%, transparent); }
+
+.crisis-entry { padding-bottom: 16px; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
+.crisis-entry:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
 
 .response-form { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .response-form select {
@@ -756,9 +759,10 @@ table.data-table th { color: var(--text-dim); font-weight: 600; font-size: 0.72r
   letter-spacing: 0.08em;
   border: 1px solid transparent;
 }
-.mayhem-state-pill.state-safe { background: color-mix(in srgb, var(--success) 20%, transparent); color: var(--success); border-color: color-mix(in srgb, var(--success) 45%, transparent); }
-.mayhem-state-pill.state-protected { background: color-mix(in srgb, var(--accent-2) 20%, transparent); color: var(--accent-2); border-color: color-mix(in srgb, var(--accent-2) 45%, transparent); }
-.mayhem-state-pill.state-affected { background: color-mix(in srgb, var(--danger) 20%, transparent); color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, transparent); }
+.mayhem-state-pill.state-gains { background: color-mix(in srgb, var(--success) 20%, transparent); color: var(--success); border-color: color-mix(in srgb, var(--success) 45%, transparent); }
+.mayhem-state-pill.state-unaffected { background: rgba(255, 255, 255, 0.06); color: var(--text-dim); border-color: var(--border); }
+.mayhem-state-pill.state-hit { background: color-mix(in srgb, var(--warning) 20%, transparent); color: var(--warning); border-color: color-mix(in srgb, var(--warning) 45%, transparent); }
+.mayhem-state-pill.state-hit_hard { background: color-mix(in srgb, var(--danger) 20%, transparent); color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, transparent); }
 
 /* ---------------------------------------------------------------------
    Player: Action Cards tab — glassmorphism gallery instead of a plain

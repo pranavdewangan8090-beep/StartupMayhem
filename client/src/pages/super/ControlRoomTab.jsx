@@ -7,27 +7,24 @@ const TOGGLES = [
   { key: 'card_play_open', label: 'Playing Action Cards' },
 ];
 
-const STATUS_LABEL = { pending: 'Pending', used_card: 'Use Action Card', traded: 'Traded', penalized: 'Penalized' };
-const STATUS_OPTIONS = ['pending', 'used_card', 'traded', 'penalized'];
+const TIER_LABEL = { hit_hard: 'Hit Hard', hit: 'Hit', unaffected: 'Unaffected', gains: 'Gains' };
 
-function StatusCell({ crisisId, team, busy, onSet }) {
-  return (
-    <select
-      value={team.status}
-      disabled={busy}
-      onChange={(e) => onSet(crisisId, team.team_id, e.target.value)}
-    >
-      {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
-    </select>
-  );
+function formatDelta(applied) {
+  if (!applied) return '—';
+  const parts = [];
+  if (applied.cash_l) parts.push(`${applied.cash_l > 0 ? '+' : ''}₹${applied.cash_l / 10}M Cash`);
+  if (applied.customers) parts.push(`${applied.customers > 0 ? '+' : ''}${applied.customers / 1000}k Customers`);
+  if (applied.reputation) parts.push(`${applied.reputation > 0 ? '+' : ''}${applied.reputation} Reputation`);
+  if (applied.innovation) parts.push(`${applied.innovation > 0 ? '+' : ''}${applied.innovation} Innovation`);
+  if (applied.decision_points) parts.push(`${applied.decision_points > 0 ? '+' : ''}${applied.decision_points} pts`);
+  return parts.length ? parts.join(' · ') : 'No change';
 }
 
 export default function ControlRoomTab() {
   const [toggles, setToggles] = useState(null);
   const [crises, setCrises] = useState([]);
   const [selectedCrisisId, setSelectedCrisisId] = useState(null);
-  const [crisisStatus, setCrisisStatus] = useState([]);
-  const [usefulCards, setUsefulCards] = useState([]);
+  const [crisisEffects, setCrisisEffects] = useState([]);
   const [tradeToggles, setTradeToggles] = useState(null);
   const [busy, setBusy] = useState(false);
   const toast = useToast();
@@ -54,12 +51,7 @@ export default function ControlRoomTab() {
 
   async function loadCrisisDetail(crisisId) {
     try {
-      const [status, useful] = await Promise.all([
-        call(supabase.rpc('fn_admin_crisis_status', { p_crisis_id: crisisId })),
-        call(supabase.rpc('fn_admin_crisis_useful_cards', { p_crisis_id: crisisId })),
-      ]);
-      setCrisisStatus(status);
-      setUsefulCards(useful);
+      setCrisisEffects(await call(supabase.rpc('fn_admin_crisis_effects', { p_crisis_id: crisisId })));
     } catch (err) {
       toast(err instanceof ApiError ? err.message : 'Could not load crisis details.', 'error');
     }
@@ -84,33 +76,12 @@ export default function ControlRoomTab() {
     setBusy(true);
     try {
       const triggered = await call(supabase.rpc('fn_super_trigger_crisis'));
-      toast(`Crisis triggered: ${triggered.title}`, 'success');
+      toast(`Crisis triggered: ${triggered.title} — effects applied to every team.`, 'success');
       await load();
       setSelectedCrisisId(triggered.id);
       await loadCrisisDetail(triggered.id);
     } catch (err) {
       toast(err instanceof ApiError ? err.message : 'Could not trigger the next crisis.', 'error');
-    } finally { setBusy(false); }
-  }
-
-  async function randomizeTeams(crisisId) {
-    setBusy(true);
-    try {
-      await call(supabase.rpc('fn_super_randomize_crisis_teams', { p_crisis_id: crisisId, p_count: 2 }));
-      toast('Placeholder affected teams assigned.', 'success');
-      await loadCrisisDetail(crisisId);
-    } catch (err) {
-      toast(err instanceof ApiError ? err.message : 'Could not assign teams.', 'error');
-    } finally { setBusy(false); }
-  }
-
-  async function setStatus(crisisId, teamId, status) {
-    setBusy(true);
-    try {
-      await call(supabase.rpc('fn_super_set_crisis_team_status', { p_crisis_id: crisisId, p_team_id: teamId, p_status: status }));
-      await loadCrisisDetail(crisisId);
-    } catch (err) {
-      toast(err instanceof ApiError ? err.message : 'Could not update status.', 'error');
     } finally { setBusy(false); }
   }
 
@@ -203,26 +174,20 @@ export default function ControlRoomTab() {
       {selectedCrisis && (
         <div className="card-surface section">
           <h2>Crisis {selectedCrisis.number}: {selectedCrisis.title}</h2>
-          <p><b>Useful action cards:</b> {usefulCards.length ? usefulCards.map((c) => c.name).join(', ') : 'None configured'}</p>
-          <div className="row" style={{ gap: 8, marginBottom: 12 }}>
-            <button className="btn btn-ghost btn-sm" disabled={busy} onClick={() => randomizeTeams(selectedCrisis.id)}>
-              Randomly Assign Placeholder Affected Teams
-            </button>
-          </div>
-          <p>Affected teams and their resolution. "Use Action Card" and "Traded" mean no resource change. "Penalized" is a reminder to manually reduce that team's resources from the Teams tab.</p>
+          <p>{selectedCrisis.description || 'Every active team\'s tier was determined automatically by their Market card, and the effect below was already applied to their resources the moment this crisis was triggered.'}</p>
           <div className="table-scroll">
             <table className="data-table">
-              <thead><tr><th>Team</th><th>Status</th><th>Last Updated</th></tr></thead>
+              <thead><tr><th>Team</th><th>Tier</th><th>Effect Applied</th></tr></thead>
               <tbody>
-                {crisisStatus.map((t) => (
+                {crisisEffects.map((t) => (
                   <tr key={t.team_id}>
                     <td><b>{t.team_code}</b></td>
-                    <td><StatusCell crisisId={selectedCrisis.id} team={t} busy={busy} onSet={setStatus} /></td>
-                    <td>{t.updated_by_login ? `${t.updated_by_login} · ${new Date(t.updated_at).toLocaleTimeString()}` : '—'}</td>
+                    <td>{t.tier ? <span className={`pill tier-${t.tier}`}>{TIER_LABEL[t.tier]}</span> : '—'}</td>
+                    <td>{formatDelta(t.applied)}</td>
                   </tr>
                 ))}
-                {crisisStatus.length === 0 && (
-                  <tr><td colSpan={3}>No affected teams assigned yet.</td></tr>
+                {crisisEffects.length === 0 && (
+                  <tr><td colSpan={3}>No teams yet.</td></tr>
                 )}
               </tbody>
             </table>

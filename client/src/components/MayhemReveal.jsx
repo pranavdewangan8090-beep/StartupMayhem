@@ -1,20 +1,25 @@
 import { useEffect, useRef } from 'react';
 import { gsap } from 'gsap';
 
-function resolveState(crisis) {
-  if (!crisis.is_affected) return { key: 'safe', label: 'SAFE', className: 'safe' };
-  if (crisis.my_status === 'used_card' || crisis.my_status === 'traded') {
-    return { key: 'protected', label: 'PROTECTED', className: 'protected' };
-  }
-  return { key: 'affected', label: 'AFFECTED', className: 'affected' };
+const TIER_LABEL = { hit_hard: 'HIT HARD', hit: 'HIT', unaffected: 'UNAFFECTED', gains: 'GAINS' };
+
+function formatDelta(applied) {
+  if (!applied) return null;
+  const parts = [];
+  if (applied.cash_l) parts.push(`${applied.cash_l > 0 ? '+' : ''}₹${applied.cash_l / 10}M Cash`);
+  if (applied.customers) parts.push(`${applied.customers > 0 ? '+' : ''}${applied.customers / 1000}k Customers`);
+  if (applied.reputation) parts.push(`${applied.reputation > 0 ? '+' : ''}${applied.reputation} Reputation`);
+  if (applied.innovation) parts.push(`${applied.innovation > 0 ? '+' : ''}${applied.innovation} Innovation`);
+  return parts.length ? parts.join(' · ') : 'No change';
 }
 
 /**
  * Full-screen Mayhem reveal, driven entirely by the real crisis row from
- * fn_crisis_public() (title, description, is_affected, my_status) — never
- * faked client-side. Plays a staged GSAP sequence: core pulse → card
- * appears → title → effect → affected/protected/safe state. Reduced-motion
- * users get the final state immediately, no animation.
+ * fn_crisis_public() (title, description, tier, applied — the team's own
+ * Market-card-determined tier and the effect already applied to their
+ * resources) — never faked client-side. Plays a staged GSAP sequence: core
+ * pulse → card appears → title → effect → tier state. Reduced-motion users
+ * get the final state immediately, no animation.
  */
 export default function MayhemReveal({ crisis, onClose }) {
   const coreRef = useRef(null);
@@ -22,8 +27,6 @@ export default function MayhemReveal({ crisis, onClose }) {
   const titleRef = useRef(null);
   const effectRef = useRef(null);
   const stateRef = useRef(null);
-
-  const resolved = resolveState(crisis);
 
   useEffect(() => {
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -49,15 +52,17 @@ export default function MayhemReveal({ crisis, onClose }) {
     <div className="mayhem-overlay" role="dialog" aria-modal="true" aria-label="Market Mayhem reveal">
       <div className="mayhem-overlay-card" ref={cardRef}>
         <div className="mayhem-core-pulse" ref={coreRef} aria-hidden="true" />
-        <span className="pill mayhem-event-pill">MARKET MAYHEM</span>
+        <span className="pill mayhem-event-pill">CRISIS</span>
         <h1 ref={titleRef}>{crisis.title}</h1>
         <p className="mayhem-overlay-story" ref={effectRef}>{crisis.description}</p>
-        <div className={`mayhem-state-pill state-${resolved.className}`} ref={stateRef}>
-          {resolved.label}
-        </div>
-        {crisis.useful_card_names?.length > 0 && (
+        {crisis.tier && (
+          <div className={`mayhem-state-pill state-${crisis.tier}`} ref={stateRef}>
+            {TIER_LABEL[crisis.tier]}
+          </div>
+        )}
+        {crisis.tier && (
           <p className="mayhem-overlay-effect">
-            <b>Useful action cards:</b> {crisis.useful_card_names.join(', ')}
+            <b>Effect on your company:</b> {formatDelta(crisis.applied)}
           </p>
         )}
         <button className="btn btn-primary btn-block" style={{ marginTop: 20 }} onClick={onClose}>
