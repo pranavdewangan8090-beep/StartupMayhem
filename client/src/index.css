@@ -418,9 +418,9 @@ p { color: var(--text-dim); line-height: 1.45; margin: 4px 0; }
 
 /* action card list tiles */
 .action-card-tile {
-  border-radius: 18px;
+  border-radius: 16px;
   border: 1px solid var(--border);
-  padding: 18px;
+  padding: 14px;
   background: var(--bg-card);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
@@ -431,23 +431,13 @@ p { color: var(--text-dim); line-height: 1.45; margin: 4px 0; }
   min-height: 100%;
   transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
 }
-.action-card-tile::before {
-  content: '';
-  position: absolute;
-  inset: 0 0 auto 0;
-  height: 3px;
-  opacity: 0.85;
-}
-.action-card-tile.cat-action::before { background: var(--cat-action); }
-.action-card-tile.cat-deal::before { background: var(--cat-deal); }
-.action-card-tile.cat-special::before { background: var(--cat-special); }
 .action-card-tile:hover { border-color: var(--border-strong); transform: translateY(-2px); box-shadow: var(--shadow); }
 .action-card-tile.listed { filter: grayscale(0.6) brightness(0.6); }
-.action-card-tile .name { font-weight: 700; margin: 10px 0 4px; color: var(--text); font-size: 0.98rem; }
-.action-card-tile .effect { font-size: 0.82rem; color: var(--text-dim); line-height: 1.45; flex: 1; }
-.action-card-tile .status-text { font-size: 0.8rem; color: var(--text-dim); margin: 10px 0 0; }
+.action-card-tile .name { font-weight: 700; margin: 8px 0 3px; color: var(--text); font-size: 1rem; letter-spacing: 0.01em; }
+.action-card-tile .effect { font-size: 0.8rem; color: var(--text-dim); line-height: 1.4; flex: 1; }
+.action-card-tile .status-text { font-size: 0.78rem; color: var(--text-dim); margin: 8px 0 0; }
 .row { display: flex; gap: 8px; align-items: center; justify-content: center; flex-wrap: wrap; }
-.action-card-tile .row { display: flex; gap: 8px; margin-top: 14px; }
+.action-card-tile .row { display: flex; gap: 8px; margin-top: 10px; }
 .action-card-tile .row .btn { flex: 1; }
 
 .pill.cat-action { background: color-mix(in srgb, var(--cat-action) 18%, transparent); color: var(--cat-action); border-color: color-mix(in srgb, var(--cat-action) 40%, transparent); }

@@ -110,7 +110,7 @@ export default function ActionCardsTab({ gameState, onChanged }) {
               {c.status === 'held' && gameState?.card_play_open && (
                 <div className="row">
                   {c.category === 'action' || c.category === 'special' ? (
-                    <button className="btn btn-primary" disabled={busy} onClick={() => playSelf(c.id)}>Play</button>
+                    <button className="btn btn-ghost" disabled={busy} onClick={() => playSelf(c.id)}>Play</button>
                   ) : (
                     <button className="btn btn-ghost" disabled={busy} onClick={() => setPlayTarget({ card: c })}>Propose Deal</button>
                   )}
