@@ -17,7 +17,7 @@ before(async () => {
 
   team = await superAdmin.rpc('fn_super_add_team', { p_team_code: `TEST-CARDS-${Date.now()}` });
   player = new Session();
-  await player.login('player', team.teamCode, team.password);
+  await player.login('player', team.loginId, team.password);
 });
 
 after(async () => {
@@ -69,7 +69,7 @@ describe('player identity cards (fn_player_cards / fn_replace_identity_card)', (
     await s2.login('super_admin', sa.loginId, sa.password);
     const team2 = await s2.rpc('fn_super_add_team', { p_team_code: `TEST-CARDS2-${Date.now()}` });
     const p2 = new Session();
-    await p2.login('player', team2.teamCode, team2.password);
+    await p2.login('player', team2.loginId, team2.password);
     await assert.rejects(
       () => p2.rpc('fn_replace_identity_card', { p_category: 'not-a-real-category' }),
       (err) => err.message === 'BAD_CATEGORY'

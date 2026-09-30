@@ -81,29 +81,29 @@ describe('auth (fn_login / fn_auth_user)', () => {
     });
 
     after(async () => {
-      await query('delete from login_attempts where login_id = $1', [team.teamCode]);
+      await query('delete from login_attempts where login_id = $1', [team.loginId]);
       await deleteTestTeam(team.teamId);
       await closePool();
     });
 
     test('8 wrong passwords lock the account out, even with the right password', async () => {
       for (let i = 0; i < 8; i++) {
-        await assert.rejects(() => new Session().login('player', team.teamCode, 'wrong'), (err) => err.message === 'INVALID_CREDENTIALS');
+        await assert.rejects(() => new Session().login('player', team.loginId, 'wrong'), (err) => err.message === 'INVALID_CREDENTIALS');
       }
       await assert.rejects(
-        () => new Session().login('player', team.teamCode, team.password),
+        () => new Session().login('player', team.loginId, team.password),
         (err) => err.message === 'RATE_LIMITED'
       );
     });
 
     test('a successful login clears the failure history', async () => {
-      await query('delete from login_attempts where login_id = $1', [team.teamCode]);
+      await query('delete from login_attempts where login_id = $1', [team.loginId]);
       for (let i = 0; i < 5; i++) {
-        await assert.rejects(() => new Session().login('player', team.teamCode, 'wrong'));
+        await assert.rejects(() => new Session().login('player', team.loginId, 'wrong'));
       }
       const s = new Session();
-      await s.login('player', team.teamCode, team.password); // under the threshold, so this still succeeds
-      const { rows } = await query('select count(*) from login_attempts where login_id = $1', [team.teamCode]);
+      await s.login('player', team.loginId, team.password); // under the threshold, so this still succeeds
+      const { rows } = await query('select count(*) from login_attempts where login_id = $1', [team.loginId]);
       assert.equal(Number(rows[0].count), 0);
     });
   });

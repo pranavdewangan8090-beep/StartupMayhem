@@ -76,19 +76,19 @@ describe('super admin only', () => {
   test('fn_super_reset_password issues a new working password', async () => {
     const created = await superAdmin.rpc('fn_super_add_team', { p_team_code: `TEST-SA-RESET-${Date.now()}` });
     const oldPlayer = new Session();
-    await oldPlayer.login('player', created.teamCode, created.password);
+    await oldPlayer.login('player', created.loginId, created.password);
 
     // fetch the user id via a direct read since no RPC exposes it — reuse fn_auth_user() on the session we already have
     const [{ user_id: userId }] = await oldPlayer.rpc('fn_auth_user');
     const reset = await superAdmin.rpc('fn_super_reset_password', { p_user_id: userId });
-    assert.equal(reset.loginId, created.teamCode);
+    assert.equal(reset.loginId, created.loginId);
 
     const newPlayer = new Session();
-    await newPlayer.login('player', created.teamCode, reset.password);
+    await newPlayer.login('player', created.loginId, reset.password);
     assert.ok(newPlayer.token);
 
     await assert.rejects(
-      () => new Session().login('player', created.teamCode, created.password),
+      () => new Session().login('player', created.loginId, created.password),
       (err) => err.message === 'INVALID_CREDENTIALS'
     );
 

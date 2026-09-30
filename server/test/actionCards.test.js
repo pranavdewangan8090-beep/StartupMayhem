@@ -22,9 +22,9 @@ before(async () => {
   teamA = await superAdmin.rpc('fn_super_add_team', { p_team_code: `TEST-AC-A-${Date.now()}` });
   teamB = await superAdmin.rpc('fn_super_add_team', { p_team_code: `TEST-AC-B-${Date.now()}` });
   playerA = new Session();
-  await playerA.login('player', teamA.teamCode, teamA.password);
+  await playerA.login('player', teamA.loginId, teamA.password);
   playerB = new Session();
-  await playerB.login('player', teamB.teamCode, teamB.password);
+  await playerB.login('player', teamB.loginId, teamB.password);
 });
 
 after(async () => {

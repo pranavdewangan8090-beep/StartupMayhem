@@ -108,6 +108,7 @@ async function main() {
         `insert into users (role, login_id, password_hash, team_id) values ('player', $1, $2, $3)`,
         [loginId, hash, teamId]
       );
+      await client.query('select fn_issue_starting_hand($1)', [teamId]);
       csvRows.push(`player,${loginId},${password},${teamCode}`);
     }
 

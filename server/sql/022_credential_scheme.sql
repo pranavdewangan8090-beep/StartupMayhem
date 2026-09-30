@@ -73,6 +73,8 @@ begin
   insert into users (role, login_id, password_hash, team_id)
   values ('player', v_login_id, crypt(v_password, gen_salt('bf')), v_team_id);
 
+  perform fn_issue_starting_hand(v_team_id);
+
   return jsonb_build_object('teamId', v_team_id, 'teamCode', p_team_code, 'loginId', v_login_id, 'password', v_password);
 end;
 $$;
