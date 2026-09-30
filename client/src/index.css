@@ -570,14 +570,7 @@ p { color: var(--text-dim); line-height: 1.45; margin: 4px 0; }
 
 .error-text { color: var(--danger); font-size: 0.82rem; margin-top: 6px; }
 
-/* No forced width: 100% here on purpose — that stretched every column
-   evenly across the full container on a wide monitor, so a "Hit Hard"
-   pill or a short effect string ended up with a huge dead gap next to it.
-   Unset, the table shrink-wraps to its content (standard table behavior)
-   and only grows as wide as it actually needs to; .table-scroll's
-   overflow-x still catches anything genuinely too wide for a narrow
-   screen. */
-table.data-table { border-collapse: collapse; font-size: 0.82rem; }
+table.data-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
 table.data-table th, table.data-table td { padding: 8px 6px; border-bottom: 1px solid var(--border); text-align: left; }
 table.data-table th { color: var(--text-dim); font-weight: 600; font-size: 0.72rem; text-transform: uppercase; }
 .table-scroll { overflow-x: auto; }
@@ -648,12 +641,7 @@ table.data-table th { color: var(--text-dim); font-weight: 600; font-size: 0.72r
 .super-main { flex: 1; min-width: 0; padding: 32px 40px 60px; }
 .super-main-header { margin-bottom: 24px; }
 .super-main-header h1 { font-size: 1.6rem; }
-/* Capped and centered, same idea as .page's 720px cap for players — on a
-   wide monitor, letting this stretch edge-to-edge just spreads sparse
-   table columns and card padding out with nothing filling them. 1180px
-   comfortably fits the widest content here (the 3-column crisis table)
-   without the huge dead gaps a full-bleed layout produced. */
-.super-main-body { width: 100%; max-width: 1180px; margin: 0 auto; }
+.super-main-body { width: 100%; }
 
 /* Mobile/tablet: the fixed 240px sidebar squeezed the whole app sideways —
    collapse it into a sticky top bar with a horizontally scrolling nav
