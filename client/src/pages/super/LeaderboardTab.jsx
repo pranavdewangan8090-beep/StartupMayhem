@@ -70,7 +70,7 @@ export default function LeaderboardTab() {
       <div className="table-scroll">
         <table className="data-table">
           <thead>
-            <tr><th>#</th><th>Team</th><th>Resource</th><th>Points</th><th>Decision</th><th>Secret Mission</th><th>Total</th></tr>
+            <tr><th>#</th><th>Team</th><th>Resource</th><th>Raw Points</th><th>Decision</th><th>Secret Mission</th><th>Total</th></tr>
           </thead>
           <tbody>
             {leaderboard.map((r, i) => (

@@ -2,12 +2,7 @@ import { useEffect, useRef } from 'react';
 import { gsap } from 'gsap';
 
 const TIER_LABEL = { hit_hard: 'HIT HARD', hit: 'HIT', unaffected: 'UNAFFECTED', gains: 'GAINS' };
-const TIER_ROWS = [
-  ['hit_hard', 'Hit Hard', 'hit_hard_teams'],
-  ['hit', 'Hit', 'hit_teams'],
-  ['gains', 'Gains', 'gains_teams'],
-  ['unaffected', 'Unaffected', 'unaffected_teams'],
-];
+const TIER_ORDER = ['hit_hard', 'hit', 'unaffected', 'gains'];
 
 function formatDelta(applied) {
   if (!applied) return null;
@@ -23,9 +18,11 @@ function formatDelta(applied) {
  * Full-screen Mayhem reveal, driven entirely by the real crisis row from
  * fn_crisis_public() (title, description, tier, applied — the team's own
  * Market-card-determined tier and the effect already applied to their
- * resources) — never faked client-side. Plays a staged GSAP sequence: core
- * pulse → card appears → title → effect → tier state. Reduced-motion users
- * get the final state immediately, no animation.
+ * resources — plus tier_deltas, what EVERY tier's effect is) — never faked
+ * client-side. Shows what each of the 4 tiers does, not which teams landed
+ * in which one. Plays a staged GSAP sequence: core pulse → card appears →
+ * title → effect → tier state. Reduced-motion users get the final state
+ * immediately, no animation.
  */
 export default function MayhemReveal({ crisis, onClose }) {
   const coreRef = useRef(null);
@@ -71,15 +68,17 @@ export default function MayhemReveal({ crisis, onClose }) {
             <b>Effect on your company:</b> {formatDelta(crisis.applied)}
           </p>
         )}
-        <div className="mayhem-affected-teams">
-          {TIER_ROWS.map(([tier, label, key]) => (
-            crisis[key]?.length > 0 && (
+        {crisis.tier_deltas && (
+          <div className="mayhem-affected-teams">
+            <p className="mayhem-tiers-heading">How each tier is affected:</p>
+            {TIER_ORDER.map((tier) => (
               <p key={tier} className="mayhem-affected-row">
-                <span className={`pill tier-${tier}`}>{label}</span> {crisis[key].join(', ')}
+                <span className={`pill tier-${tier}`}>{TIER_LABEL[tier]}</span>{' '}
+                {tier === crisis.tier ? <b>{formatDelta(crisis.tier_deltas[tier])} (this is you)</b> : formatDelta(crisis.tier_deltas[tier])}
               </p>
-            )
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
         <button className="btn btn-primary btn-block" style={{ marginTop: 20 }} onClick={onClose}>
           Acknowledge
         </button>

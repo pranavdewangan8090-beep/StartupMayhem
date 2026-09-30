@@ -818,6 +818,7 @@ table.data-table th { color: var(--text-dim); font-weight: 600; font-size: 0.72r
 .mayhem-overlay-story { font-size: 1rem; margin-top: 10px; }
 .mayhem-overlay-effect { margin-top: 10px; color: var(--text); }
 .mayhem-affected-teams { margin-top: 14px; text-align: left; }
+.mayhem-tiers-heading { font-size: 0.8rem; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.04em; margin: 4px 0; }
 .mayhem-affected-row { display: flex; align-items: flex-start; gap: 8px; margin: 6px 0; font-size: 0.85rem; color: var(--text-dim); }
 .mayhem-affected-row .pill { flex-shrink: 0; margin-top: 1px; }
 .mayhem-event-pill { background: color-mix(in srgb, var(--danger) 20%, transparent); color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, transparent); }

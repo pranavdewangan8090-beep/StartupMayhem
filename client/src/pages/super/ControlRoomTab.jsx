@@ -6,7 +6,7 @@ import ConfirmModal from '../../components/ConfirmModal.jsx';
 
 const TOGGLES = [
   { key: 'r1_replace_open', label: 'R1: Card Replacements' },
-  { key: 'card_play_open', label: 'Playing Action Cards' },
+  { key: 'card_play_open', label: 'Round 3: Play Special/Action/Deal Cards' },
 ];
 
 const TIER_LABEL = { hit_hard: 'Hit Hard', hit: 'Hit', unaffected: 'Unaffected', gains: 'Gains' };

@@ -64,6 +64,10 @@ const CODE_MAP = {
   INITIATOR_INSUFFICIENT_CASH: 'The team that proposed this deal no longer has enough Cash for it.',
   CRISIS_OUT_OF_ORDER: 'Another Super Admin already triggered that crisis. The list has been refreshed — check it before triggering again.',
   USER_NOT_FOUND: 'Account not found.',
+  PARTNER_HAS_NO_DEAL_CARD: "That team doesn't have a Deal card available right now — they may have already used or traded theirs.",
+  YOUR_DEAL_CARD_UNAVAILABLE: 'Your own Deal card is no longer available (used or traded since this offer was made), so it can\'t be paired for this deal.',
+  NO_CARDS_AVAILABLE_IN_CATEGORY: 'No more copies of any card in that category are available (each card is limited to 3 teams).',
+  CANNOT_MERGE_SAME_TEAM: 'A team cannot be merged with itself.',
 };
 
 // Fired whenever a call proves the stored token no longer identifies anyone
