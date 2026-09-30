@@ -3,7 +3,7 @@ import { supabase, call, newRequestId, ApiError } from '../../lib/supabase.js';
 import { useToast } from '../../lib/ToastContext.jsx';
 import Modal from '../../components/Modal.jsx';
 
-const CAT_LABEL = { action: 'Special Card', deal: 'Deal', special: 'Action Card' };
+const CAT_LABEL = { action: 'Action Card', deal: 'Deal', special: 'Special Card' };
 
 export default function ActionCardsTab({ gameState, onChanged }) {
   const [hand, setHand] = useState([]);
@@ -104,7 +104,7 @@ export default function ActionCardsTab({ gameState, onChanged }) {
       {incomingDeals.length > 0 && (
         <div className="card-surface section" style={{ borderColor: 'var(--cat-deal)' }}>
           <h2>Deal Offers For You</h2>
-          <p className="admin-card-hint">Accepting pairs your own held Deal card with theirs — both cards' effects apply, and both are used up. You need your own Deal card available to accept.</p>
+          <p className="admin-card-hint">Accepting uses your own Deal card too — both effects apply, both are used up.</p>
           <div className="action-grid">
             {incomingDeals.map((d) => (
               <div key={d.id} className="action-card-tile cat-deal">
@@ -122,8 +122,7 @@ export default function ActionCardsTab({ gameState, onChanged }) {
 
       <div className="card-surface section">
         <h2>Your Special Cards ({hand.filter((c) => c.status !== 'used').length}/3)</h2>
-        <p>You were issued one Special, one Deal and one Action card at the start of the game. You can exchange one of these for a different card during Round 3, through an admin-processed trade — a Deal card can only be traded for another Deal card, and only cards you haven't used yet can be traded.</p>
-        <p className="admin-card-hint">A Deal card only works as a pair: you propose to one team at a time, and it only completes if they also still have their own Deal card to accept with — both cards' effects then apply to both teams.</p>
+        <p className="admin-card-hint">Trade unused cards in Round 3 (Deal only for Deal). A Deal only completes if your partner also has theirs — then both effects apply to both teams.</p>
         {hand.length === 0 && <p>Loading your cards…</p>}
         <div className="action-grid">
           {hand.map((c) => (
@@ -163,7 +162,7 @@ export default function ActionCardsTab({ gameState, onChanged }) {
         <Modal onClose={() => setPlayTarget(null)}>
           <h2>Choose a partner</h2>
           <p>{playTarget.card.name}</p>
-          <p className="admin-card-hint">If they don't have their own Deal card available, this is refused immediately.</p>
+          <p className="admin-card-hint">Refused immediately if they don't have their own Deal card.</p>
           <div className="field">
             <select value={selectedTeamId} onChange={(e) => setSelectedTeamId(e.target.value)}>
               <option value="">Select a team…</option>

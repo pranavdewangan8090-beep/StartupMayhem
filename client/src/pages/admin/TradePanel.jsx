@@ -3,11 +3,11 @@ import { supabase, call, newRequestId, ApiError } from '../../lib/supabase.js';
 import { useToast } from '../../lib/ToastContext.jsx';
 import ConfirmModal from '../../components/ConfirmModal.jsx';
 
-// Matches ActionCardsTab.jsx's CAT_LABEL — the 'action' DB category displays
-// as "Special Card" and 'special' as "Action Card", so this dropdown needs
-// the same mapping rather than the raw category value, or it'd mislead an
-// admin about which cards the deal-only-trades-with-deal rule applies to.
-const CAT_LABEL = { action: 'Special Card', deal: 'Deal', special: 'Action Card' };
+// Matches ActionCardsTab.jsx's CAT_LABEL — the DB category name shown as-is
+// (action -> "Action Card", special -> "Special Card"), so this dropdown
+// needs the same mapping, or it'd mislead an admin about which cards the
+// deal-only-trades-with-deal rule applies to.
+const CAT_LABEL = { action: 'Action Card', deal: 'Deal', special: 'Special Card' };
 
 const emptyForm = {
   teamAId: '', teamACardId: '',

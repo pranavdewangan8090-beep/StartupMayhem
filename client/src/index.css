@@ -420,7 +420,7 @@ p { color: var(--text-dim); line-height: 1.45; margin: 4px 0; }
 .action-card-tile {
   border-radius: 16px;
   border: 1px solid var(--border);
-  padding: 14px;
+  padding: 12px;
   background: var(--bg-card);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
@@ -433,11 +433,11 @@ p { color: var(--text-dim); line-height: 1.45; margin: 4px 0; }
 }
 .action-card-tile:hover { border-color: var(--border-strong); transform: translateY(-2px); box-shadow: var(--shadow); }
 .action-card-tile.listed { filter: grayscale(0.6) brightness(0.6); }
-.action-card-tile .name { font-weight: 700; margin: 8px 0 3px; color: var(--text); font-size: 1rem; letter-spacing: 0.01em; }
-.action-card-tile .effect { font-size: 0.8rem; color: var(--text-dim); line-height: 1.4; flex: 1; }
-.action-card-tile .status-text { font-size: 0.78rem; color: var(--text-dim); margin: 8px 0 0; }
+.action-card-tile .name { font-weight: 700; margin: 6px 0 2px; color: var(--text); font-size: 0.95rem; letter-spacing: 0.01em; line-height: 1.25; }
+.action-card-tile .effect { font-size: 0.78rem; color: var(--text-dim); line-height: 1.35; flex: 1; }
+.action-card-tile .status-text { font-size: 0.76rem; color: var(--text-dim); margin: 6px 0 0; }
 .row { display: flex; gap: 8px; align-items: center; justify-content: center; flex-wrap: wrap; }
-.action-card-tile .row { display: flex; gap: 8px; margin-top: 10px; }
+.action-card-tile .row { display: flex; gap: 8px; margin-top: 8px; }
 .action-card-tile .row .btn { flex: 1; }
 
 .pill.cat-action { background: color-mix(in srgb, var(--cat-action) 18%, transparent); color: var(--cat-action); border-color: color-mix(in srgb, var(--cat-action) 40%, transparent); }
@@ -854,8 +854,9 @@ table.data-table th { color: var(--text-dim); font-weight: 600; font-size: 0.72r
 .action-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 12px;
+  gap: 10px;
   align-items: stretch;
+  margin-top: 10px;
 }
 
 /* Catalog: a dense, scannable list (60 cards) — no colored accent bar, just

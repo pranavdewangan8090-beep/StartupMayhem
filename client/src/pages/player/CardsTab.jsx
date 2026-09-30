@@ -53,12 +53,6 @@ export default function CardsTab({ gameState, revealed, onReveal }) {
 
   return (
     <div>
-      {!replaceOpen && (
-        <div className="section card-surface" style={{ marginBottom: 16 }}>
-          <p className="warning-text">Replacements are currently closed by the Super Admin.</p>
-        </div>
-      )}
-
       <div className="card-grid">
         {CATS.map((c) => {
           const title = cards[`${c.key}_title`];

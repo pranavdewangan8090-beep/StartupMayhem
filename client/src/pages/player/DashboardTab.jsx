@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { supabase, call } from '../../lib/supabase.js';
 
 const TIER_LABEL = { hit_hard: 'Hit Hard', hit: 'Hit', unaffected: 'Unaffected', gains: 'Gains' };
-const TIER_ORDER = ['hit_hard', 'hit', 'unaffected', 'gains'];
 
 function formatDelta(applied) {
   if (!applied) return null;
@@ -66,17 +65,6 @@ export default function DashboardTab({ crises = [] }) {
                 <p className={c.tier === 'hit_hard' || c.tier === 'hit' ? 'warning-text' : 'success-text'}>
                   Effect on your company: {formatDelta(c.applied)}
                 </p>
-              )}
-              {c.tier_deltas && (
-                <div style={{ marginTop: 8 }}>
-                  <p className="mayhem-tiers-heading">How each tier is affected:</p>
-                  {TIER_ORDER.map((tier) => (
-                    <p key={tier} className="mayhem-affected-row">
-                      <span className={`pill tier-${tier}`}>{TIER_LABEL[tier]}</span>{' '}
-                      {tier === c.tier ? <b>{formatDelta(c.tier_deltas[tier])} (this is you)</b> : formatDelta(c.tier_deltas[tier])}
-                    </p>
-                  ))}
-                </div>
               )}
             </div>
           ))}

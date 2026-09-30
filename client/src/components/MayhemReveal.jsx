@@ -2,7 +2,6 @@ import { useEffect, useRef } from 'react';
 import { gsap } from 'gsap';
 
 const TIER_LABEL = { hit_hard: 'HIT HARD', hit: 'HIT', unaffected: 'UNAFFECTED', gains: 'GAINS' };
-const TIER_ORDER = ['hit_hard', 'hit', 'unaffected', 'gains'];
 
 function formatDelta(applied) {
   if (!applied) return null;
@@ -18,11 +17,11 @@ function formatDelta(applied) {
  * Full-screen Mayhem reveal, driven entirely by the real crisis row from
  * fn_crisis_public() (title, description, tier, applied — the team's own
  * Market-card-determined tier and the effect already applied to their
- * resources — plus tier_deltas, what EVERY tier's effect is) — never faked
- * client-side. Shows what each of the 4 tiers does, not which teams landed
- * in which one. Plays a staged GSAP sequence: core pulse → card appears →
- * title → effect → tier state. Reduced-motion users get the final state
- * immediately, no animation.
+ * resources) — never faked client-side. Deliberately shows ONLY the
+ * player's own tier + effect, not a breakdown of all 4 tiers — that
+ * overflowed the screen and wasn't the point of the reveal. Plays a staged
+ * GSAP sequence: core pulse → card appears → title → effect → tier state.
+ * Reduced-motion users get the final state immediately, no animation.
  */
 export default function MayhemReveal({ crisis, onClose }) {
   const coreRef = useRef(null);
@@ -67,17 +66,6 @@ export default function MayhemReveal({ crisis, onClose }) {
           <p className="mayhem-overlay-effect">
             <b>Effect on your company:</b> {formatDelta(crisis.applied)}
           </p>
-        )}
-        {crisis.tier_deltas && (
-          <div className="mayhem-affected-teams">
-            <p className="mayhem-tiers-heading">How each tier is affected:</p>
-            {TIER_ORDER.map((tier) => (
-              <p key={tier} className="mayhem-affected-row">
-                <span className={`pill tier-${tier}`}>{TIER_LABEL[tier]}</span>{' '}
-                {tier === crisis.tier ? <b>{formatDelta(crisis.tier_deltas[tier])} (this is you)</b> : formatDelta(crisis.tier_deltas[tier])}
-              </p>
-            ))}
-          </div>
         )}
         <button className="btn btn-primary btn-block" style={{ marginTop: 20 }} onClick={onClose}>
           Acknowledge
