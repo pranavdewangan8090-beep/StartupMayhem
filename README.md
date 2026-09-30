@@ -11,7 +11,9 @@ server/   Not a deployed server — just SQL + one-off scripts run against Supab
   sql/    001 schema, 002-003 seed data, 005 game-logic functions,
           010-026 the Supabase-direct auth + RPC layer, crises, and fixes —
           run in numeric order
-  scripts/seedUsers.js   resets the game and creates 30 teams / 20 admins / 10 super admins
+  scripts/seedUsers.js   resets the game and creates 45 teams / 20 admins / 10 super admins —
+                         re-running it keeps every existing login/password the same, only
+                         generating new ones for newly added slots
   scripts/applySql.js    applies SQL files in one transaction (dry run unless --commit)
 client/   React (Vite) mobile-first UI — talks to Supabase via lib/supabase.js
 ```
@@ -29,7 +31,7 @@ You'll also need to create `_app_secrets` yourself (it's deliberately not in
 any SQL file, so the real JWT secret never touches source control) — see the
 comment at the top of `server/sql/010_supabase_auth.sql`.
 
-Then create the real accounts (30 teams with a random deal of cards, 20
+Then create the real accounts (45 teams with a random deal of cards, 20
 admins, 10 super admins). This also **resets the game**: all crises go back to
 untriggered, R1 replacements open, card play closed, trading off:
 
@@ -40,8 +42,13 @@ npm install
 node scripts/seedUsers.js
 ```
 
-This writes `server/scripts/credentials.local.csv` — hand these out and then
-move/delete the file. It is git-ignored and must never be committed.
+This writes `server/scripts/credentials.local.csv`. **Keep this file** — it
+is git-ignored and must never be committed, but it's also the durable
+source of truth for credentials: running `seedUsers.js` again (e.g. to
+reset scores before the event, or after a rehearsal) reuses every
+login/password already in it unchanged, and only generates fresh ones for
+newly added teams/staff. Deleting it before a reset regenerates every
+credential from scratch instead.
 
 ### 2. Client
 

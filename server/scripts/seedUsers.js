@@ -1,12 +1,29 @@
 // Resets and re-creates the real accounts for the event: wipes every team,
 // user, and any game data hanging off a team (action cards, trades, crisis
-// effects), resets the crisis sequence and game toggles, then creates 30 teams (with a random deal of the 5 identity
-// cards each), 20 admins, 10 super admins. Passwords and login IDs are
-// randomly generated and written to a local CSV — this file is NEVER
-// committed (it's covered by .gitignore) and should be deleted/moved
-// somewhere safe once you've handed out credentials.
+// effects), resets the crisis sequence and game toggles, then creates 45
+// teams (with a random deal of the 5 identity cards each), 20 admins, 10
+// super admins.
 //
-// Credential design: the team's display code (T01..T30, used everywhere in
+// Login IDs and passwords are STABLE across resets: this reads
+// credentials.local.csv if it already exists and reuses the exact same
+// login_id + password for every team/admin/super_admin slot that file
+// already has one for (rehashing the same plaintext password fresh each
+// time — bcrypt hashes don't need to match byte-for-byte, only verify
+// against the same password). Fresh random credentials are only generated
+// for slots the file doesn't have yet — e.g. raising TEAM_COUNT adds new
+// teams with new credentials, without touching any existing team's login.
+// This means resetting the game (wiping scores/state) never invalidates
+// credentials you've already handed out.
+//
+// Because of that, DO NOT delete or move credentials.local.csv after
+// handing out credentials the way earlier versions of this comment said to
+// — it is now the durable source of truth every future reset reads back
+// from. Keep it (it's already git-ignored, so it never reaches source
+// control) and back it up somewhere safe instead. If you genuinely want a
+// fresh, unrelated set of credentials for everyone, delete the file first;
+// running with it deleted regenerates every login from scratch.
+//
+// Credential design: the team's display code (T01..T45, used everywhere in
 // the UI/leaderboard) stays simple and sequential, but the LOGIN ID is a
 // separate value with a short random suffix (T07-K3F9) — guessing a team's
 // public T-number no longer gets you their login. Admin/super_admin login
@@ -24,9 +41,11 @@ import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import pg from 'pg';
 
-const TEAM_COUNT = 30;
+const TEAM_COUNT = 45;
 const ADMIN_COUNT = 20;
 const SUPER_ADMIN_COUNT = 10;
+
+const CSV_PATH = new URL('./credentials.local.csv', import.meta.url);
 
 // Unambiguous alphabet (no 0/O, 1/I/l) — easy to hand-write and read aloud.
 const ID_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
@@ -54,6 +73,28 @@ function uniqueLoginId(prefix, used) {
   return id;
 }
 
+/**
+ * Reads a previous run's credentials.local.csv, if any. Returns
+ * { players: Map<teamCode, {loginId, password}>, admins: [{loginId,password}], superAdmins: [...] }
+ * so this run can reuse them instead of generating new ones.
+ */
+function loadExistingCredentials() {
+  const players = new Map();
+  const admins = [];
+  const superAdmins = [];
+  if (!fs.existsSync(CSV_PATH)) return { players, admins, superAdmins };
+
+  const lines = fs.readFileSync(CSV_PATH, 'utf8').trim().split('\n').slice(1);
+  for (const line of lines) {
+    const [role, loginId, password, teamCode] = line.split(',');
+    if (!loginId || !password) continue;
+    if (role === 'player' && teamCode) players.set(teamCode, { loginId, password });
+    else if (role === 'admin') admins.push({ loginId, password });
+    else if (role === 'super_admin') superAdmins.push({ loginId, password });
+  }
+  return { players, admins, superAdmins };
+}
+
 async function pickRandomCardId(client, category, exclude = []) {
   const { rows } = await client.query(
     `select id from identity_cards where category = $1 and id <> all($2::int[]) order by random() limit 1`,
@@ -67,6 +108,16 @@ async function main() {
   const client = await pool.connect();
   const csvRows = ['role,login_id,password,team_code'];
   const usedLoginIds = new Set();
+  const existing = loadExistingCredentials();
+  let reusedCount = 0;
+  let freshCount = 0;
+
+  // Reserve every reused login ID up front so a freshly-generated one for a
+  // NEW slot (e.g. a team added by raising TEAM_COUNT) can never collide
+  // with one already in use.
+  for (const { loginId } of existing.players.values()) usedLoginIds.add(loginId);
+  for (const { loginId } of existing.admins) usedLoginIds.add(loginId);
+  for (const { loginId } of existing.superAdmins) usedLoginIds.add(loginId);
 
   try {
     await client.query('BEGIN');
@@ -88,7 +139,17 @@ async function main() {
 
     for (let i = 1; i <= TEAM_COUNT; i++) {
       const teamCode = `T${String(i).padStart(2, '0')}`;
-      const loginId = uniqueLoginId(`${teamCode}-`, usedLoginIds);
+      const reused = existing.players.get(teamCode);
+      let loginId, password;
+      if (reused) {
+        ({ loginId, password } = reused);
+        reusedCount++;
+      } else {
+        loginId = uniqueLoginId(`${teamCode}-`, usedLoginIds);
+        password = randomPin();
+        freshCount++;
+      }
+
       const marketId = await pickRandomCardId(client, 'market');
       const customerId = await pickRandomCardId(client, 'customer');
       const missionId = await pickRandomCardId(client, 'mission');
@@ -109,7 +170,6 @@ async function main() {
       );
       const teamId = teamRows[0].id;
 
-      const password = randomPin();
       const hash = await bcrypt.hash(password, 10);
       await client.query(
         `insert into users (role, login_id, password_hash, team_id) values ('player', $1, $2, $3)`,
@@ -120,16 +180,32 @@ async function main() {
     }
 
     for (let i = 1; i <= ADMIN_COUNT; i++) {
-      const loginId = uniqueLoginId('AD-', usedLoginIds);
-      const password = randomPin();
+      const reused = existing.admins[i - 1];
+      let loginId, password;
+      if (reused) {
+        ({ loginId, password } = reused);
+        reusedCount++;
+      } else {
+        loginId = uniqueLoginId('AD-', usedLoginIds);
+        password = randomPin();
+        freshCount++;
+      }
       const hash = await bcrypt.hash(password, 10);
       await client.query(`insert into users (role, login_id, password_hash) values ('admin', $1, $2)`, [loginId, hash]);
       csvRows.push(`admin,${loginId},${password},`);
     }
 
     for (let i = 1; i <= SUPER_ADMIN_COUNT; i++) {
-      const loginId = uniqueLoginId('SA-', usedLoginIds);
-      const password = randomPin();
+      const reused = existing.superAdmins[i - 1];
+      let loginId, password;
+      if (reused) {
+        ({ loginId, password } = reused);
+        reusedCount++;
+      } else {
+        loginId = uniqueLoginId('SA-', usedLoginIds);
+        password = randomPin();
+        freshCount++;
+      }
       const hash = await bcrypt.hash(password, 10);
       await client.query(`insert into users (role, login_id, password_hash) values ('super_admin', $1, $2)`, [loginId, hash]);
       csvRows.push(`super_admin,${loginId},${password},`);
@@ -144,11 +220,11 @@ async function main() {
     await pool.end();
   }
 
-  const outPath = new URL('./credentials.local.csv', import.meta.url);
-  fs.writeFileSync(outPath, csvRows.join('\n') + '\n');
+  fs.writeFileSync(CSV_PATH, csvRows.join('\n') + '\n');
   console.log(`Reset complete: ${TEAM_COUNT} teams, ${ADMIN_COUNT} admins, ${SUPER_ADMIN_COUNT} super admins.`);
   console.log('Game state reset: all crises untriggered, R1 replacements OPEN, card play CLOSED, trading OFF.');
-  console.log(`Credentials written to ${outPath.pathname} — keep this file safe and do not commit it.`);
+  console.log(`Credentials: ${reusedCount} reused unchanged, ${freshCount} newly generated.`);
+  console.log(`Written to ${CSV_PATH.pathname} — keep this file (do not delete it): it's how future resets keep credentials stable. It is git-ignored and must never be committed.`);
 }
 
 main().catch((err) => {
