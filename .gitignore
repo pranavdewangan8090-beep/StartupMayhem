@@ -6,6 +6,7 @@ node_modules/
 # meant to be embedded in client-side code, unlike server/.env's real secrets
 !client/.env
 server/scripts/credentials.local.csv
+server/resources.xlsx
 dist/
 build/
 *.log
