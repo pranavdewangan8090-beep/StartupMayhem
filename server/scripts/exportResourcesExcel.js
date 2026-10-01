@@ -1,11 +1,17 @@
-// Writes every active team's current resources into a plain .xlsx file —
-// no live DB connection to set up in Excel, no ODBC/pooler config. Just run
-// this again whenever you want the sheet's numbers refreshed, or pass
-// --watch=<seconds> to have it keep refreshing the same file in place.
+// Writes every active team's current resources + points into a plain .xlsx
+// file — no live DB connection to set up in Excel, no ODBC/pooler config.
+// Just run this again whenever you want the sheet's numbers refreshed, or
+// pass --watch=<seconds> to have it keep refreshing the same file in place.
 //
-// Reads one existing admin login from credentials.local.csv (never printed)
-// to call fn_admin_teams over the same REST API the app itself uses — no
-// direct Postgres connection needed, which is the flaky part on-site.
+// Reads one existing super_admin login from credentials.local.csv (never
+// printed) to call fn_admin_teams + fn_super_leaderboard_raw over the same
+// REST API the app itself uses — no direct Postgres connection needed,
+// which is the flaky part on-site. super_admin (not admin) is required
+// because decision_points is super_admin-only, same as in the app.
+//
+// Resource/Decision/Total score columns are computed with the exact same
+// formula as the Super Admin's in-app Leaderboard (LeaderboardTab.jsx):
+// Total = 30% Resource Score + 70% Decision Score + Mission Bonus.
 //
 // Usage:
 //   node scripts/exportResourcesExcel.js
@@ -36,7 +42,7 @@ const args = Object.fromEntries(
 const OUT_PATH = args.out ? path.resolve(args.out) : path.join(__dirname, '..', 'resources.xlsx');
 const WATCH_SECONDS = args.watch ? Number(args.watch) : null;
 
-function readFirstAdminCredential() {
+function readFirstSuperAdminCredential() {
   const csv = fs.readFileSync(CSV_PATH, 'utf8').trim().split('\n');
   const header = csv[0].split(',');
   const roleIdx = header.indexOf('role');
@@ -44,11 +50,31 @@ function readFirstAdminCredential() {
   const passIdx = header.indexOf('password');
   for (const line of csv.slice(1)) {
     const cols = line.split(',');
-    if (cols[roleIdx] === 'admin') {
+    if (cols[roleIdx] === 'super_admin') {
       return { login_id: cols[loginIdx], password: cols[passIdx] };
     }
   }
-  throw new Error('No admin credential row found in credentials.local.csv');
+  throw new Error('No super_admin credential row found in credentials.local.csv');
+}
+
+// Mirrors LeaderboardTab.jsx's scoreLeaderboard() exactly.
+function scoreTeam(r) {
+  const x = Math.min(r.cash_l / 10, 10);
+  const y = Math.min(r.customers / 20000, 10);
+  const cashScore = (x / 10) * 100;
+  const customerScore = (y / 10) * 100;
+  const reputationScore = (r.reputation / 5) * 100;
+  const innovationScore = (r.innovation / 10) * 100;
+  const resourceScore = 0.3 * cashScore + 0.3 * customerScore + 0.2 * reputationScore + 0.2 * innovationScore;
+  const decisionScore = Math.max(0, Math.min(100, Number(r.decision_points)));
+  const missionBonus = r.mission_completed ? Number(r.bonus_points || 0) : 0;
+  const totalScore = 0.3 * resourceScore + 0.7 * decisionScore + missionBonus;
+  return {
+    resourceScore: Math.round(resourceScore * 10) / 10,
+    decisionScore: Math.round(decisionScore * 10) / 10,
+    missionBonus,
+    totalScore: Math.round(totalScore * 10) / 10,
+  };
 }
 
 async function rpc(fn, body, token) {
@@ -66,10 +92,20 @@ async function rpc(fn, body, token) {
 }
 
 async function fetchTeams() {
-  const { login_id, password } = readFirstAdminCredential();
-  const login = await rpc('fn_login', { p_role: 'admin', p_login_id: login_id, p_password: password });
+  const { login_id, password } = readFirstSuperAdminCredential();
+  const login = await rpc('fn_login', { p_role: 'super_admin', p_login_id: login_id, p_password: password });
   if (login.error) throw new Error(`Login failed: ${login.error}`);
-  return rpc('fn_admin_teams', {}, login.token);
+
+  const [teams, leaderboard] = await Promise.all([
+    rpc('fn_admin_teams', {}, login.token),
+    rpc('fn_super_leaderboard_raw', {}, login.token),
+  ]);
+  const byId = new Map(leaderboard.map((r) => [r.team_id, r]));
+
+  return teams.map((t) => {
+    const lb = byId.get(t.id) || { decision_points: 0, bonus_points: 0, mission_completed: false, mission_title: null };
+    return { ...t, ...lb, ...scoreTeam(lb) };
+  });
 }
 
 async function writeWorkbook(teams) {
@@ -84,7 +120,13 @@ async function writeWorkbook(teams) {
     { header: 'Reputation', key: 'reputation', width: 12 },
     { header: 'Innovation', key: 'innovation', width: 12 },
     { header: 'R1 Replacements Used', key: 'replacements_used', width: 20 },
+    { header: 'Mission', key: 'mission_title', width: 22 },
     { header: 'Mission Completed', key: 'mission_completed', width: 18 },
+    { header: 'Decision Points (raw)', key: 'decision_points', width: 20 },
+    { header: 'Resource Score', key: 'resourceScore', width: 16 },
+    { header: 'Decision Score', key: 'decisionScore', width: 16 },
+    { header: 'Mission Bonus', key: 'missionBonus', width: 14 },
+    { header: 'Total Score', key: 'totalScore', width: 14 },
   ];
   sheet.getRow(1).font = { bold: true };
 
@@ -98,9 +140,16 @@ async function writeWorkbook(teams) {
       reputation: t.reputation,
       innovation: t.innovation,
       replacements_used: t.replacements_used,
+      mission_title: t.mission_title,
       mission_completed: t.mission_completed ? 'Yes' : 'No',
+      decision_points: t.decision_points,
+      resourceScore: t.resourceScore,
+      decisionScore: t.decisionScore,
+      missionBonus: t.missionBonus,
+      totalScore: t.totalScore,
     });
   }
+  sheet.autoFilter = { from: 'A1', to: { row: 1, column: sheet.columns.length } };
 
   await wb.xlsx.writeFile(OUT_PATH);
   console.log(`Updated ${OUT_PATH} — ${teams.length} teams, ${new Date().toLocaleTimeString()}`);
